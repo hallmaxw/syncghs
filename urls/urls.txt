@@ -1,0 +1,1 @@
+http://courses.csail.mit.edu/6.852/08/lectures/Lecture10.pdf // explains the concept of merege and absorb
