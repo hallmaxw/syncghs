@@ -1,32 +1,48 @@
 /**
  * Created by maxwell on 10/10/15.
  */
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 
 public class SyncGHSThread extends Thread {
     private int id;
     private CyclicBarrier barrier;
-    private Link link;
+    private List<Link> links;
     private State state;
 
-    public SyncGHSThread(int id, Link link, CyclicBarrier barrier) {
+    public SyncGHSThread(int id, CyclicBarrier barrier) {
         this.id = id;
-        this.link = link;
+        this.barrier = barrier;
+        this.links = new ArrayList<Link>();
+        this.state = State.Initialization;
+    }
+
+    public SyncGHSThread(int id, List<Link> links, CyclicBarrier barrier) {
+        this.id = id;
+        this.links = links;
         this.barrier = barrier;
         this.state = State.Initialization;
     }
 
     public void sendMessages() {
-        print("Sending message");
-        Message msg = new Message(Message.MessageType.Test, String.format("Hello, I'm thread %d", id));
-        link.sendMessage(msg);
+        String hello = String.format("Hello, I'm thread %d", id);
+        for(Link link: links) {
+            link.sendMessage(new Message(Message.MessageType.Test, hello));
+        }
+        print("Sent messages");
         state = State.ReadMessages;
     }
 
     public void readMessages() {
-        Message msg = link.getMessage();
-        print(String.format("Received message: %s", msg.message));
+        for(Link link: links) {
+            synchronized (link.inboundMessages) {
+                while(!link.inboundMessages.isEmpty()) {
+                    Message msg = link.inboundMessages.remove(0);
+                    print(String.format("Received message: %s", msg.message));
+                }
+            }
+        }
         state = State.End;
     }
 
@@ -62,6 +78,10 @@ public class SyncGHSThread extends Thread {
         } catch(Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void addLink(Link link) {
+        links.add(link);
     }
 
     enum State {

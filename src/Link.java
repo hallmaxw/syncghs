@@ -1,5 +1,15 @@
 /**
  * Created by maxwell on 10/10/15.
+ *
+ * Each node says hello to their neighbors.
+ * The topology is hard coded to the following:
+ *
+ *       1-----2-----3
+ *       |     |     |
+ *       |     |     |
+ *       |     |     |
+ *       4-----5-----/
+ *
  */
 import java.util.ArrayList;
 import java.util.Collections;
