@@ -50,28 +50,15 @@ public class SyncGHSThread extends Thread {
         }
     }
 
-    public void sendRoundTerminationMessages() {
+    public void broadcastMessage(Message msg) {
         for(Link link: links) {
-            link.sendMessage(new Message(Message.MessageType.RoundTermination));
+            link.sendMessage(msg);
         }
     }
-
-    public void sendAlgoTerminationRequestMessages() {
-        for(Link link: links) {
-            link.sendMessage(new Message(Message.MessageType.AlgoTerminationRequest));
-        }
-    }
-
-    public void sendAlgoTerminationMessages() {
-        for(Link link: links) {
-            link.sendMessage(new Message(Message.MessageType.AlgoTermination));
-        }
-    }
-
-
+    
     public void processMessages() {
-        int terminatedCount = 0;
-        while(terminatedCount < links.size() - terminatedCount) {
+        int roundTerminatedCount = 0;
+        while(roundTerminatedCount < links.size() - terminatedCount) {
             for (Link link : links) {
                 synchronized (link.inboundMessages) {
                     while (!link.inboundMessages.isEmpty()) {
@@ -81,7 +68,7 @@ public class SyncGHSThread extends Thread {
                                 print(String.format("Received message:(%s) %s", msg.type.name(), msg.data));
                                 break;
                             case RoundTermination:
-                                terminatedCount++;
+                                roundTerminatedCount++;
                                 break;
                             case AlgoTerminationRequest:
                                 requestedTerminationCount++;
@@ -97,7 +84,7 @@ public class SyncGHSThread extends Thread {
     }
 
     public void end() {
-        sendAlgoTerminationMessages();
+        broadcastMessage(new Message(Message.MessageType.AlgoTermination));
         print("Finished");
         phaser.arriveAndDeregister();
     }
@@ -109,22 +96,22 @@ public class SyncGHSThread extends Thread {
     public void run() {
         state = State.SendMessages;
         sendHelloMessages();
-        sendRoundTerminationMessages();
+        broadcastMessage(new Message(Message.MessageType.RoundTermination));
         processMessages();
         waitForRound();
 
 
         if(id % 2 == 0) {
             sendEvenMessages();
-            sendRoundTerminationMessages();
+            broadcastMessage(new Message(Message.MessageType.RoundTermination));
             processMessages();
             waitForRound();
         }
 
-        sendAlgoTerminationRequestMessages();
+        broadcastMessage(new Message(Message.MessageType.AlgoTerminationRequest));
 
         while(requestedTerminationCount < links.size()) {
-            sendRoundTerminationMessages();
+            broadcastMessage(new Message(Message.MessageType.RoundTermination));
             processMessages();
             waitForRound();
         }

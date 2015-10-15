@@ -2,15 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="cbfa2668-4e73-497c-9c62-998185518104" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/SyncGSHS/Main.class" afterPath="$PROJECT_DIR$/out/production/SyncGSHS/Main.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/SyncGSHS/Message$MessageType.class" afterPath="$PROJECT_DIR$/out/production/SyncGSHS/Message$MessageType.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/SyncGSHS/Message.class" afterPath="$PROJECT_DIR$/out/production/SyncGSHS/Message.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/SyncGSHS/SyncGHSThread$1.class" afterPath="$PROJECT_DIR$/out/production/SyncGSHS/SyncGHSThread$1.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/SyncGSHS/SyncGHSThread$State.class" afterPath="$PROJECT_DIR$/out/production/SyncGSHS/SyncGHSThread$State.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/out/production/SyncGSHS/SyncGHSThread.class" afterPath="$PROJECT_DIR$/out/production/SyncGSHS/SyncGHSThread.class" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/Link.java" afterPath="$PROJECT_DIR$/src/Link.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/Main.java" afterPath="$PROJECT_DIR$/src/Main.java" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/Message.java" afterPath="$PROJECT_DIR$/src/Message.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/SyncGHSThread.java" afterPath="$PROJECT_DIR$/src/SyncGHSThread.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
     </list>
@@ -40,13 +31,13 @@
       <file leaf-file-name="SyncGHSThread.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/SyncGHSThread.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="3.840726" vertical-offset="0" max-vertical-offset="2325">
-              <caret line="129" column="0" selection-start-line="129" selection-start-column="0" selection-end-line="129" selection-end-column="0" />
+            <state vertical-scroll-proportion="-0.99596775" vertical-offset="1349" max-vertical-offset="2130">
+              <caret line="57" column="4" selection-start-line="57" selection-start-column="4" selection-end-line="57" selection-end-column="4" />
               <folding>
                 <element signature="n#!!doc" expanded="true" />
                 <element signature="imports" expanded="true" />
-                <element signature="e#4209#4210#0" expanded="true" />
-                <element signature="e#4240#4241#0" expanded="true" />
+                <element signature="e#3997#3998#0" expanded="true" />
+                <element signature="e#4028#4029#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -78,7 +69,7 @@
       <file leaf-file-name="Main.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/Main.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0" vertical-offset="120" max-vertical-offset="1110">
+            <state vertical-scroll-proportion="0.0" vertical-offset="60" max-vertical-offset="1110">
               <caret line="36" column="25" selection-start-line="36" selection-start-column="25" selection-end-line="36" selection-end-column="25" />
               <folding>
                 <element signature="imports" expanded="true" />
@@ -484,12 +475,12 @@
       <option name="number" value="Default" />
       <updated>1444506863365</updated>
       <workItem from="1444506864324" duration="7439000" />
-      <workItem from="1444937031035" duration="3079000" />
+      <workItem from="1444937031035" duration="3381000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="10518000" />
+    <option name="totallyTimeSpent" value="10820000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="0" y="0" width="1280" height="800" extended-state="0" />
@@ -566,8 +557,8 @@
           <folding>
             <element signature="n#!!doc" expanded="true" />
             <element signature="imports" expanded="true" />
-            <element signature="e#4209#4210#0" expanded="true" />
-            <element signature="e#4240#4241#0" expanded="true" />
+            <element signature="e#3997#3998#0" expanded="true" />
+            <element signature="e#4028#4029#0" expanded="true" />
           </folding>
         </state>
       </provider>
@@ -604,7 +595,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/Main.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0" vertical-offset="120" max-vertical-offset="1110">
+        <state vertical-scroll-proportion="0.0" vertical-offset="60" max-vertical-offset="1110">
           <caret line="36" column="25" selection-start-line="36" selection-start-column="25" selection-end-line="36" selection-end-column="25" />
           <folding>
             <element signature="imports" expanded="true" />
@@ -622,13 +613,13 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/src/SyncGHSThread.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="3.840726" vertical-offset="0" max-vertical-offset="2325">
-          <caret line="129" column="0" selection-start-line="129" selection-start-column="0" selection-end-line="129" selection-end-column="0" />
+        <state vertical-scroll-proportion="-0.99596775" vertical-offset="1349" max-vertical-offset="2130">
+          <caret line="57" column="4" selection-start-line="57" selection-start-column="4" selection-end-line="57" selection-end-column="4" />
           <folding>
             <element signature="n#!!doc" expanded="true" />
             <element signature="imports" expanded="true" />
-            <element signature="e#4209#4210#0" expanded="true" />
-            <element signature="e#4240#4241#0" expanded="true" />
+            <element signature="e#3997#3998#0" expanded="true" />
+            <element signature="e#4028#4029#0" expanded="true" />
           </folding>
         </state>
       </provider>
