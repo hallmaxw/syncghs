@@ -3,14 +3,19 @@
  */
 public class Message {
     MessageType type;
-    String message;
+    Object data;
 
-    public Message(MessageType type, String message) {
+    public Message(MessageType type) {
         this.type = type;
-        this.message = message;
+        this.data = null;
+    }
+
+    public Message(MessageType type, Object data) {
+        this.type = type;
+        this.data = data;
     }
 
     enum MessageType {
-        Test
+        TextMessage, RoundTermination, AlgoTerminationRequest, AlgoTermination
     }
 }

@@ -18,13 +18,16 @@ import java.util.List;
 public class Link {
     public List<Message> inboundMessages;
     public List<Message> outboundMessages;
+    public int destinationId;
 
-    public Link() {
+    public Link(int destinationId) {
+        this.destinationId = destinationId;
         inboundMessages = Collections.synchronizedList(new ArrayList<Message>());
         outboundMessages = Collections.synchronizedList(new ArrayList<Message>());
     }
 
-    public Link(List<Message> inboundMessages, List<Message> outboundMessages) {
+    public Link(List<Message> inboundMessages, List<Message> outboundMessages, int destinationId) {
+        this.destinationId = destinationId;
         this.inboundMessages = inboundMessages;
         this.outboundMessages = outboundMessages;
     }
@@ -41,8 +44,8 @@ public class Link {
         return inboundMessages.remove(0);
     }
 
-    public static Link GetReverseLink(Link link) {
-        Link reverseLink = new Link(link.outboundMessages, link.inboundMessages);
+    public static Link GetReverseLink(Link link, int destinationId) {
+        Link reverseLink = new Link(link.outboundMessages, link.inboundMessages, destinationId);
         return reverseLink;
     }
 }
