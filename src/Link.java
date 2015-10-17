@@ -16,36 +16,39 @@ import java.util.Collections;
 import java.util.List;
 
 public class Link {
-    public List<Message> inboundMessages;
-    public List<Message> outboundMessages;
-    public int destinationId;
+	public List<Message> inboundMessages;
+	public List<Message> outboundMessages;
+	public String destinationId;
+	public double weight;
 
-    public Link(int destinationId) {
-        this.destinationId = destinationId;
-        inboundMessages = Collections.synchronizedList(new ArrayList<Message>());
-        outboundMessages = Collections.synchronizedList(new ArrayList<Message>());
-    }
+	public Link(String destinationId, double weight) {
+		this.destinationId = destinationId;
+		this.weight = weight;
+		inboundMessages = Collections.synchronizedList(new ArrayList<Message>());
+		outboundMessages = Collections.synchronizedList(new ArrayList<Message>());
+	}
 
-    public Link(List<Message> inboundMessages, List<Message> outboundMessages, int destinationId) {
-        this.destinationId = destinationId;
-        this.inboundMessages = inboundMessages;
-        this.outboundMessages = outboundMessages;
-    }
+	public Link(List<Message> inboundMessages, List<Message> outboundMessages, String destinationId, double weight) {
+		this.destinationId = destinationId;
+		this.weight = weight;
+		this.inboundMessages = inboundMessages;
+		this.outboundMessages = outboundMessages;
+	}
 
-    public void sendMessage(Message msg) {
-        outboundMessages.add(msg);
-    }
+	public void sendMessage(Message msg) {
+		outboundMessages.add(msg);
+	}
 
-    public Message peekMessage() {
-        return inboundMessages.get(0);
-    }
+	public Message peekMessage() {
+		return inboundMessages.get(0);
+	}
 
-    public Message getMessage() {
-        return inboundMessages.remove(0);
-    }
+	public Message getMessage() {
+		return inboundMessages.remove(0);
+	}
 
-    public static Link GetReverseLink(Link link, int destinationId) {
-        Link reverseLink = new Link(link.outboundMessages, link.inboundMessages, destinationId);
-        return reverseLink;
-    }
+	public static Link GetReverseLink(Link link, String destinationId, double weight) {
+		Link reverseLink = new Link(link.outboundMessages, link.inboundMessages, destinationId, weight);
+		return reverseLink;
+	}
 }
