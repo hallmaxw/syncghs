@@ -60,14 +60,14 @@ public class Main {
 
 		*/
 
-       /* threads.forEach(Thread::start);
-        threads.forEach((Thread t) -> {
+        threads.values().forEach(Thread::start);
+        threads.values().forEach((Thread t) -> {
             try {
                 t.join();
             } catch(InterruptedException e) {
                 e.printStackTrace();
             }
-        }); */
+        }); 
         System.out.println("All threads finished properly");
     }
 }
