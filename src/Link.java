@@ -47,8 +47,8 @@ public class Link {
 		return inboundMessages.remove(0);
 	}
 
-	public static Link GetReverseLink(Link link, String destinationId, double weight) {
-		Link reverseLink = new Link(link.outboundMessages, link.inboundMessages, destinationId, weight);
+	public static Link GetReverseLink(Link link, String destinationId) {
+		Link reverseLink = new Link(link.outboundMessages, link.inboundMessages, destinationId, link.weight);
 		return reverseLink;
 	}
 }

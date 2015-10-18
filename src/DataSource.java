@@ -1,6 +1,7 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.Map;
+import java.util.Scanner;
 
 /*
  * created by : Prashant Prakash
@@ -16,17 +17,15 @@ public class DataSource {
 		try {
 			FileReader input = new FileReader(inputpath);
 			BufferedReader br = new BufferedReader(input);
-			String line = br.readLine();
-			int i = 0;
-			while (line != null) {
-				if (i == 0) {
-					numThreads = Integer.parseInt(line.trim());
-				} else if (i == 1) {
-					threadIds = line.split(Constant.SPACESEP);
-				}
-				line = br.readLine();
-				i++;
-			}
+            Scanner inputScanner = new Scanner(br);
+            numThreads = inputScanner.nextInt();
+            inputScanner.nextLine();
+            threadIds = new String[numThreads];
+
+            for(int i = 0; i < threadIds.length; i++) {
+                threadIds[i] = inputScanner.next();
+            }
+            inputScanner.nextLine();
 
 		} catch (Exception ex) {
 			System.err.println("Error in reading input File");
@@ -37,26 +36,32 @@ public class DataSource {
 		try {
 			FileReader input = new FileReader(inputpath);
 			BufferedReader br = new BufferedReader(input);
-			String line = br.readLine();
-			int i = 0;
-			while (line != null) {
-				if (i > 1) {
-					String[] lineArr = line.split(Constant.TABSEP);
-					for (int index = 0; index < lineArr.length; index++) {
-						if (Double.parseDouble(lineArr[index]) != Constant.NEGONE) {
-							Link link = new Link(threadIds[index], Double.parseDouble(lineArr[index]));
-							threads.get(threadIds[i - 2]).addLink(link);
-							threads.get(threadIds[index]).addLink(
-									Link.GetReverseLink(link, threadIds[i - 2], Double.parseDouble(lineArr[index])));
+            Scanner inputScanner = new Scanner(br);
+            // move the scanner to the weights
+			inputScanner.nextLine();
+            inputScanner.nextLine();
+			for(int sourceIndex = 0; sourceIndex < threads.size(); sourceIndex++) {
 
-						}
-					}
-				}
-				line = br.readLine();
-				i++;
+                for (int destinationIndex = 0; destinationIndex < getNumThreads(); destinationIndex++) {
+                    double weight = inputScanner.nextDouble();
+                    // only process the right side of the matrix
+                    if(destinationIndex < sourceIndex)
+                        continue;
+                    if(destinationIndex == sourceIndex)
+                        continue;
+                    if (weight != Constant.NEGONE) {
+                        Link link = new Link(threadIds[destinationIndex], weight);
+                        threads.get(threadIds[sourceIndex]).addLink(link);
+                        threads.get(threadIds[destinationIndex])
+                                .addLink(Link.GetReverseLink(link, threadIds[sourceIndex]));
+
+                    }
+                }
+				inputScanner.nextLine();
 			}
 
 		} catch (Exception ex) {
+            ex.printStackTrace();
 			System.err.println("Error in reading input File");
 		}
 	}

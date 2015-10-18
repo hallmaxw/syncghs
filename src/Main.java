@@ -20,8 +20,8 @@ public class Main {
     //static final int numThreads = 5;
 
     public static void main(String[] args) {
-        
-    	String inputPath = "D:\\git\\HackerRankCodes\\SynchGHS\\src\\input.txt";
+        String inputPath = "D:\\git\\HackerRankCodes\\SynchGHS\\src\\input.txt";
+    	//String inputPath = "/Users/maxwell/syncghs/input-file.txt";
     	DataSource dsSource = new DataSource();
     	dsSource.readThreadIds(inputPath);
     	Phaser phaser = new Phaser(dsSource.getNumThreads());
@@ -33,32 +33,10 @@ public class Main {
         
         // building links with weights 
         dsSource.readWeights(inputPath, threads);
-        
-        /*Link link = new Link(2);
-        threads.get(0).addLink(link);
-        threads.get(1).addLink(Link.GetReverseLink(link, 1));
+        threads.values().forEach((SyncGHSThread t) -> {
+            System.out.println(t);
+        });
 
-        link = new Link(4);
-        threads.get(0).addLink(link);
-        threads.get(3).addLink(Link.GetReverseLink(link, 1));
-
-        link = new Link(5);
-        threads.get(1).addLink(link);
-        threads.get(4).addLink(Link.GetReverseLink(link, 2));
-
-        link = new Link(5);
-        threads.get(3).addLink(link);
-        threads.get(4).addLink(Link.GetReverseLink(link, 4));
-
-        link = new Link(3);
-        threads.get(1).addLink(link);
-        threads.get(2).addLink(Link.GetReverseLink(link, 2));
-
-        link = new Link(3);
-        threads.get(4).addLink(link);
-        threads.get(2).addLink(Link.GetReverseLink(link, 5));
-
-		*/
 
         threads.values().forEach(Thread::start);
         threads.values().forEach((Thread t) -> {

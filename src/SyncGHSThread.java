@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.concurrent.*;
 
 public class SyncGHSThread extends Thread {
-    private int id;
-    private int componentId;
+    private String id;
+    private String componentId;
     private Phaser phaser;
     private List<Link> links;
     private State state;
@@ -16,7 +16,7 @@ public class SyncGHSThread extends Thread {
     private int terminatedCount;
 
 
-    public SyncGHSThread(int id, Phaser phaser) {
+    public SyncGHSThread(String id, Phaser phaser) {
         this.id = id;
         this.componentId = id;
         this.phaser = phaser;
@@ -27,7 +27,7 @@ public class SyncGHSThread extends Thread {
         terminatedCount = 0;
     }
 
-    public SyncGHSThread(int id, List<Link> links, Phaser phaser) {
+    public SyncGHSThread(String id, List<Link> links, Phaser phaser) {
         this.id = id;
         this.componentId = id;
         this.links = links;
@@ -55,7 +55,7 @@ public class SyncGHSThread extends Thread {
             link.sendMessage(msg);
         }
     }
-    
+
     public void processMessages() {
         int roundTerminatedCount = 0;
         while(roundTerminatedCount < links.size() - terminatedCount) {
@@ -100,14 +100,6 @@ public class SyncGHSThread extends Thread {
         processMessages();
         waitForRound();
 
-
-        if(id % 2 == 0) {
-            sendEvenMessages();
-            broadcastMessage(new Message(Message.MessageType.RoundTermination));
-            processMessages();
-            waitForRound();
-        }
-
         broadcastMessage(new Message(Message.MessageType.AlgoTerminationRequest));
 
         while(requestedTerminationCount < links.size()) {
@@ -134,5 +126,14 @@ public class SyncGHSThread extends Thread {
 
     enum State {
         Initialization, SendMessages, ProcessMessages, End
+    }
+
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(String.format("THREAD %s\n", id));
+        for(Link link: links) {
+            builder.append(String.format("%s -- %s --> %s\n", id, link.weight, link.destinationId));
+        }
+        return builder.toString();
     }
 }
