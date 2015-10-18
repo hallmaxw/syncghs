@@ -40,13 +40,7 @@ public class SyncGHSThread extends Thread {
 
     public void sendHelloMessages() {
         for(Link link: links) {
-            link.sendMessage(new Message(Message.MessageType.TextMessage, String.format("Hello, %d", link.destinationId)));
-        }
-    }
-
-    public void sendEvenMessages() {
-        for(Link link: links) {
-            link.sendMessage(new Message(Message.MessageType.TextMessage, String.format("Hey %d, I'm even!", link.destinationId)));
+            link.sendMessage(new Message(Message.MessageType.TextMessage, String.format("Hello, %s", link.destinationId)));
         }
     }
 
@@ -90,7 +84,7 @@ public class SyncGHSThread extends Thread {
     }
 
     public void print(String msg) {
-        System.out.format("ID %d (round %d): %s\n", id, round, msg);
+        System.out.format("ID %s (round %d): %s\n", id, round, msg);
     }
 
     public void run() {
