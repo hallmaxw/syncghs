@@ -23,11 +23,12 @@ public class SyncGHSThread extends Thread {
 	private int level;
 	private Queue<Message> inboundMessage;
 	private Link testLink;
-	private Map<String, Queue<Message>> idMessageInboundMap;
+	private Map<String, List<Message>> idMessageInboundMap;
 	private Link bestLink;
 	private double bestWeight;
 	private String parentId;
 	private int findCount;
+    
 	public SyncGHSThread(String id, Phaser phaser) {
 		this.id = id;
 		this.componentId = id;
@@ -40,7 +41,7 @@ public class SyncGHSThread extends Thread {
 		terminatedCount = 0;
 		this.level = 0;
 		inboundMessage = new SynchronousQueue<Message>();
-		idMessageInboundMap = new HashMap<String, Queue<Message>>();
+		idMessageInboundMap = new HashMap<String, List<Message>>();
 		testLink = new Link();
 	}
 
@@ -54,13 +55,6 @@ public class SyncGHSThread extends Thread {
 		requestedTerminationCount = 0;
 		terminatedCount = 0;
 		
-	}
-
-	public void sendHelloMessages() {
-		for (Link link : links) {
-			link.sendMessage(new Message(Message.MessageType.TextMessage, String
-					.format("Hello, %s", link.destinationId)));
-		}
 	}
 
 	public void broadcastMessage(Message msg) {
@@ -129,9 +123,9 @@ public class SyncGHSThread extends Thread {
 	public void wakeup() {
 		Link link = findMinEdge();
 		link.state = null; // assign state as 1 which is find for other side of edge
-		this.level =0;
-		this.state =State.Found;
-		this.findCount =0;
+		this.level = 0;
+		this.state = State.Found;
+		this.findCount = 0;
 		Message message  = new Message();
 		message.type = Message.MessageType.Connect;
 		message.weight = link.weight;
@@ -144,7 +138,7 @@ public class SyncGHSThread extends Thread {
 	public void readMessage() {
 		for (Link link : links) {
 			synchronized (idMessageInboundMap.get(link.destinationId)) {
-				Message message = idMessageInboundMap.get(link.destinationId).remove();
+				Message message = idMessageInboundMap.get(link.destinationId).remove(0);
 				switch (message.type) {
 				case Connect:
 					connect(message.level, link);
@@ -359,25 +353,18 @@ public class SyncGHSThread extends Thread {
 			}
 		}
 	}
-	/*
-	 * 
-	 * 
-	 */
+
 	public void changeRoot() {
 		Message message = new Message();
 		
 	}
 
-	/*
-	 * 
-	 * 
-	 * (non-Javadoc)
-	 * @see java.lang.Thread#run()
-	 */
+
 	
 	public void changeRootMessage() {
 		changeRoot();
 	}
+
 	public void run() {
 		/*state = State.SendMessages;
 		sendHelloMessages();
@@ -410,6 +397,7 @@ public class SyncGHSThread extends Thread {
 
 	public void addLink(Link link) {
 		links.add(link);
+        idMessageInboundMap.put(link.destinationId, link.inboundMessages);
 	}
 
 	enum State {
