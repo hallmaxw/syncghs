@@ -6,6 +6,8 @@ public class Message {
     Object data;
     int level;
     double weight;
+    State state;
+    String id;
 
     public Message() {
     	
@@ -22,6 +24,10 @@ public class Message {
     }
 
     enum MessageType {
-        TextMessage, RoundTermination, AlgoTerminationRequest, AlgoTermination, Connect , Initiate
+        TextMessage, RoundTermination, AlgoTerminationRequest, AlgoTermination, Connect , Initiate , TestMessage
+    }
+    
+    enum State {
+    	Find , Found 
     }
 }

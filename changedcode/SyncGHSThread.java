@@ -1,12 +1,14 @@
 /**
  * Created by maxwell on 10/10/15.
  */
-import java.awt.TrayIcon.MessageType;
 import java.nio.file.LinkOption;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
-import java.util.concurrent.*;
+import java.util.concurrent.Phaser;
+import java.util.concurrent.SynchronousQueue;
 
 public class SyncGHSThread extends Thread {
 	private String id;
@@ -19,7 +21,10 @@ public class SyncGHSThread extends Thread {
 	private int terminatedCount;
 	private String leaderID;
 	private int level ;
-	Queue<Message> inboundMessage ;
+	private Queue<Message> inboundMessage ;
+	private Link testLink;
+	private Map<String,Queue<Message>> idMessageInboundMap;
+	
 	public SyncGHSThread(String id, Phaser phaser) {
 		this.id = id;
 		this.componentId = id;
@@ -32,7 +37,8 @@ public class SyncGHSThread extends Thread {
 		terminatedCount = 0;
 		this.level = 0;
 		inboundMessage = new SynchronousQueue<Message>();
-		
+		idMessageInboundMap  = new HashMap<String, Queue<Message>>();
+		testLink = new Link();
 	}
 
 	public SyncGHSThread(String id, List<Link> links, Phaser phaser) {
@@ -155,9 +161,73 @@ public class SyncGHSThread extends Thread {
 			Message message  = new Message();
 			message.type = Message.MessageType.Initiate;
 			message.level = L + 1;
+			message.state = Message.State.Find;
+			message.weight = link.weight;
+			this.inboundMessage.add(message);
 			
 		}
 	}
+	
+	/*
+	 * 
+	 * Intiate function
+	 */
+	public void initiate(int L , String id , State state) {
+		this.level  = L; 
+		this.id = id;
+		this.state = State.Find;
+		for (Link link : links) {
+			if(link.state == Link.State.Branch) { // 1 is for Branch
+				Message message = new Message();
+				message.type = Message.MessageType.Initiate;
+				message.level = L ;
+				message.id = id;
+				message.weight = link.weight;
+				idMessageInboundMap.get(link.destinationId).add(message);
+			}
+		}
+		
+		if(state == State.Find) {
+			// call test function
+		}
+		
+	}
+	
+	
+	public void test() {
+		double  min = Double.MAX_VALUE ;
+		Link minLink  = null;
+		for (Link link : links) {
+			if(link.state  ==  Link.State.Basic) {
+				if(min > link.weight) {
+					minLink = link;
+					min = link.weight;
+				}
+			}
+		}
+		
+		if(min != Double.MAX_VALUE) {
+			this.testLink = minLink;
+			Message message = new Message();
+			message.type = Message.MessageType.TestMessage;
+			message.level = this.level;
+			message.id =this.id;
+			message.weight = minLink.weight;
+			idMessageInboundMap.get(minLink.destinationId).add(message);
+		} else {
+			this.testLink = null;
+			// call function report
+		}
+		
+		
+	}
+	
+	
+	public void testMessage (int L, int id , int j) {
+		
+	}
+	
+	
 	public void run() {
 		state = State.SendMessages;
 		sendHelloMessages();
@@ -190,7 +260,7 @@ public class SyncGHSThread extends Thread {
 	}
 
 	enum State {
-		Connect ,Initialization, SendMessages, ProcessMessages, End , Find
+		Connect ,Initialization, SendMessages, ProcessMessages, End , Find 
 	}
 	
 	
