@@ -20,16 +20,19 @@ public class SyncGHSThread extends Thread {
 	private int requestedTerminationCount;
 	private int terminatedCount;
 	private String leaderID;
-	private int level ;
-	private Queue<Message> inboundMessage ;
+	private int level;
+	private Queue<Message> inboundMessage;
 	private Link testLink;
-	private Map<String,Queue<Message>> idMessageInboundMap;
-	
+	private Map<String, Queue<Message>> idMessageInboundMap;
+	private Link bestLink;
+	private double bestWeight;
+	private String parentId;
+	private int findCount;
 	public SyncGHSThread(String id, Phaser phaser) {
 		this.id = id;
 		this.componentId = id;
 		this.phaser = phaser;
-		this.leaderID =id;
+		this.leaderID = id;
 		this.links = new ArrayList<Link>();
 		this.state = State.Initialization;
 		round = 1;
@@ -37,7 +40,7 @@ public class SyncGHSThread extends Thread {
 		terminatedCount = 0;
 		this.level = 0;
 		inboundMessage = new SynchronousQueue<Message>();
-		idMessageInboundMap  = new HashMap<String, Queue<Message>>();
+		idMessageInboundMap = new HashMap<String, Queue<Message>>();
 		testLink = new Link();
 	}
 
@@ -50,6 +53,7 @@ public class SyncGHSThread extends Thread {
 		round = 1;
 		requestedTerminationCount = 0;
 		terminatedCount = 0;
+		
 	}
 
 	public void sendHelloMessages() {
@@ -116,21 +120,53 @@ public class SyncGHSThread extends Thread {
 		return minLink;
 	}
 
+	
+
 	/*
-	 * wake up function to intiate one 
-	 * 
+	 * wake up function to intiate one
 	 */
+	
+	public void wakeup() {
+		Link link = findMinEdge();
+		link.state = null; // assign state as 1 which is find for other side of edge
+		this.level =0;
+		this.state =State.Found;
+		this.findCount =0;
+		Message message  = new Message();
+		message.type = Message.MessageType.Connect;
+		message.weight = link.weight;
+		idMessageInboundMap.get(link.destinationId).add(message);
+	}
 	/*
 	 * (non-Javadoc) read messages and then process
 	 */
 
 	public void readMessage() {
 		for (Link link : links) {
-			synchronized (link.inboundMessages) {
-				Message message = link.inboundMessages.remove(0);
+			synchronized (idMessageInboundMap.get(link.destinationId)) {
+				Message message = idMessageInboundMap.get(link.destinationId).remove();
 				switch (message.type) {
 				case Connect:
-					
+					connect(message.level, link);
+					break;
+				case Initiate :
+					initiate(message.level, id, state);
+					break;
+				case TestMessage :
+					testMessage(message.level, id, link);
+					break;
+				case Accept : 
+					accept(link);
+					break;
+				case Reject :
+					reject(link);
+				case ReportMessage :
+					reportMessage(link.weight, link);
+					break;
+				case ChangeRootMessage : 
+					changeRootMessage();
+					break;
+				
 				}
 			}
 		}
@@ -138,98 +174,212 @@ public class SyncGHSThread extends Thread {
 
 	/*
 	 * (non-Javadoc)
+	 * 
 	 * @see java.lang.Thread#run()
 	 */
-	
-	public void connect(int L , Link link) {
-		// TODO: add this feature 
-		// if  this node is sleeping then make a wake up call 
-		
-		if( L < this.level) {
-			// change to Branch State 
+
+	public void connect(int L, Link link) {
+		// TODO: add this feature
+		// if this node is sleeping then make a wake up call
+
+		if (L < this.level) {
+			// change to Branch State
 			link.state = Link.State.Branch;
-			
-		} else if(link.state == Link.State.Basic) {  // connect
+
+		} else if (link.state == Link.State.Basic) { // connect
 			Message message = new Message();
 			message.type = Message.MessageType.Connect;
 			message.level = L;
 			message.weight = link.weight;
-			this.inboundMessage.add(message);			
+			this.inboundMessage.add(message);
 		}
-		
+
 		else { // Initiate
-			Message message  = new Message();
+			Message message = new Message();
 			message.type = Message.MessageType.Initiate;
 			message.level = L + 1;
 			message.state = Message.State.Find;
 			message.weight = link.weight;
 			this.inboundMessage.add(message);
-			
+
 		}
 	}
-	
+
 	/*
 	 * 
 	 * Intiate function
 	 */
-	public void initiate(int L , String id , State state) {
-		this.level  = L; 
+	public void initiate(int L, String id, State state) {
+		this.level = L;
 		this.id = id;
 		this.state = State.Find;
 		for (Link link : links) {
-			if(link.state == Link.State.Branch) { // 1 is for Branch
+			if (link.state == Link.State.Branch) { // 1 is for Branch
 				Message message = new Message();
 				message.type = Message.MessageType.Initiate;
-				message.level = L ;
+				message.level = L;
 				message.id = id;
 				message.weight = link.weight;
 				idMessageInboundMap.get(link.destinationId).add(message);
 			}
 		}
-		
-		if(state == State.Find) {
+
+		if (state == State.Find) {
 			// call test function
 		}
-		
+
 	}
-	
-	
+
 	public void test() {
-		double  min = Double.MAX_VALUE ;
-		Link minLink  = null;
+		double min = Double.MAX_VALUE;
+		Link minLink = null;
 		for (Link link : links) {
-			if(link.state  ==  Link.State.Basic) {
-				if(min > link.weight) {
+			if (link.state == Link.State.Basic) {
+				if (min > link.weight) {
 					minLink = link;
 					min = link.weight;
 				}
 			}
 		}
-		
-		if(min != Double.MAX_VALUE) {
+
+		if (min != Double.MAX_VALUE) {
 			this.testLink = minLink;
 			Message message = new Message();
 			message.type = Message.MessageType.TestMessage;
 			message.level = this.level;
-			message.id =this.id;
+			message.id = this.id;
 			message.weight = minLink.weight;
 			idMessageInboundMap.get(minLink.destinationId).add(message);
 		} else {
 			this.testLink = null;
 			// call function report
 		}
+
+	}
+
+	public void testMessage(int L, String id, Link link) {
+		if (L > this.level) {
+			Message message = new Message();
+			message.type = Message.MessageType.TestMessage;
+			message.level = L;
+			message.id = id;
+			message.weight = link.weight;
+			idMessageInboundMap.get(this.id).add(message);
+		} else if (id == this.id) {
+			if (link.state == Link.State.Basic)
+				link.state = Link.State.Rejected;
+
+			if (link != this.testLink) {
+				Message message = new Message();
+				message.type = Message.MessageType.Reject; // Reject
+				message.weight = link.weight;
+				idMessageInboundMap.get(link.destinationId).add(message);
+			} else {
+				test();
+			}
+		} else {
+			Message message = new Message();
+			message.type = Message.MessageType.Accept;
+			message.weight = link.weight;
+			idMessageInboundMap.get(link.destinationId).add(message);
+		}
+	}
+
+	/*
+	 * 
+	 */
+	public void accept(Link link) {
+		this.testLink = null;
+		if (link.weight < this.bestWeight) {
+			this.bestWeight = link.weight;
+			this.bestLink = link;
+		}
+
+		// call report fucntion
+	}
+
+	/*
+	 * 
+	 * (non-Javadoc)
+	 * 
+	 * @see java.lang.Thread#run()
+	 */
+
+	public void reject(Link link) {
+		if (link.state == Link.State.Basic) {
+			link.state = Link.State.Rejected;
+
+		}
+
+		test();
+	}
+	
+	public void report() {
+		int k =0 ;
+		for (Link link : links) {
+			 if(link.state == Link.State.Branch && link.destinationId != this.parentId) 
+				 k++;
+		}
 		
+		if(findCount == k && this.testLink == null) {
+			this.state = null; // 2 have to assigneed here 
+			Message message = new Message();
+			message.type = Message.MessageType.ReportMessage;
+			// message.weight = this.bestWeight;
+			// message.weight = 				 // we need srouce destination mapping in link
+			// idMessageInboundMap.get(key)      // same as above
+		}
 		
 	}
 	
-	
-	public void testMessage (int L, int id , int j) {
+	/*
+	 * 
+	 * 
+	 */
+	public void reportMessage(double weight, Link link) {
+		if(link.destinationId != this.parentId) {
+			if(weight < this.bestWeight) {
+				this.bestLink = link;
+				this.bestWeight = weight;
+			}
+			
+			// increment find count by 1 
+			// call report function
+		}
+		else {
+			if(this.state == State.Find) {
+				Message message  = new Message();
+				message.type =  null ; // have to add 5 here what is it ? 
+				message.weight =weight;
+				idMessageInboundMap.get(this.id).add(message);
+			} else if(weight > this.bestWeight) {
+				// call change root function
+			} else {
+				// print output  // stop the program
+			}
+		}
+	}
+	/*
+	 * 
+	 * 
+	 */
+	public void changeRoot() {
+		Message message = new Message();
 		
 	}
+
+	/*
+	 * 
+	 * 
+	 * (non-Javadoc)
+	 * @see java.lang.Thread#run()
+	 */
 	
-	
+	public void changeRootMessage() {
+		changeRoot();
+	}
 	public void run() {
-		state = State.SendMessages;
+		/*state = State.SendMessages;
 		sendHelloMessages();
 		broadcastMessage(new Message(Message.MessageType.RoundTermination));
 		processMessages();
@@ -243,7 +393,10 @@ public class SyncGHSThread extends Thread {
 			waitForRound();
 		}
 
-		end();
+		end();*/
+		wakeup();
+		readMessage();
+		
 	}
 
 	public void waitForRound() {
@@ -260,10 +413,8 @@ public class SyncGHSThread extends Thread {
 	}
 
 	enum State {
-		Connect ,Initialization, SendMessages, ProcessMessages, End , Find 
+		Connect, Initialization, SendMessages, ProcessMessages, End, Find , Found 
 	}
-	
-	
 
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
