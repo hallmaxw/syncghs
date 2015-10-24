@@ -18,6 +18,7 @@ public class SyncGHSThread extends Thread {
     private Map<Link, Link> mwoeResponses; // map to store our children's responses to MWOE search
     private Map<Link, Message> testResponses;
     private Map<Link, Queue<Message>> outboundMessages;
+    private Map<Link, Message> testRequests; //test requests that we can't respond to yet
     private boolean mwoeInitReceived;
 
 	public SyncGHSThread(String id, Phaser phaser) {
@@ -32,6 +33,7 @@ public class SyncGHSThread extends Thread {
         mwoeResponses = new HashMap<Link, Link>();
         outboundMessages = new HashMap<Link, Queue<Message>>();
         testResponses = new HashMap<Link, Message>();
+        testRequests = new HashMap<Link, Message>();
         mwoeInitReceived = false;
 	}
 
@@ -80,7 +82,20 @@ public class SyncGHSThread extends Thread {
 	}
 
     private void processTestRequest(Link link, Message msg) {
-        outboundMessages.get(link).add(new Message(Message.MessageType.TestResponse, true));
+        if(msg.level > level) {
+            // need to wait to respond
+            testRequests.put(link, msg);
+        } else {
+            // respond immediately
+            String reqComponent  = (String) msg.data;
+            Message responseMsg = new Message(Message.MessageType.TestResponse);
+            if(reqComponent.equals(node.componentId)) {
+                responseMsg.data = false;
+            } else {
+                responseMsg.data = true;
+            }
+            outboundMessages.get(link).add(responseMsg);
+        }
     }
 
     private void processTestResponse(Link link, Message msg) {

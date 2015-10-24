@@ -32,8 +32,8 @@ public class Message {
         AlgoTermination,
         Connect,
         Initiate,
-        TestRequest,
-        TestResponse,
+        TestRequest, // data is component ID (string)
+        TestResponse, // data is a boolean
         Reject,
         Accept,
         ReportMessage,
