@@ -21,6 +21,9 @@ public class SyncGHSThread extends Thread {
     private Map<Link, Message> testRequests; //test requests that we can't respond to yet
     private boolean mwoeInitReceived;
     private List<Link> connectEdges; // list of edges to connect on. Should be empty if not leader
+    private Map<Link, Boolean> componentUpdateResponses; // map to store which links have sent an ack
+    private boolean terminate = false;
+    private boolean connectEdgesUpdated = false;
 
 	public SyncGHSThread(String id, Phaser phaser) {
 		this.phaser = phaser;
@@ -37,6 +40,7 @@ public class SyncGHSThread extends Thread {
         testRequests = new HashMap<Link, Message>();
         mwoeInitReceived = false;
         connectEdges = new ArrayList<Link>();
+        componentUpdateResponses = new HashMap<Link, Boolean>();
 	}
 
 	public void broadcastMessage(Message msg) {
@@ -89,14 +93,17 @@ public class SyncGHSThread extends Thread {
                         case ComponentUpdate:
                             processComponentUpdate(link, msg);
                             break;
-                        case ChildUpdate:
-                            processChildUpdate(link, msg);
+                        case ChildUpdateAck:
+                            processChildUpdateAck(link, msg);
+                            break;
+                        case UpdateQueue:
+                            processUpdateQueue(link, msg);
                             break;
 						case RoundTermination:
 							roundTerminatedCount++;
 							break;
 						case AlgoTerminationRequest:
-							requestedTerminationCount++;
+							processAlgoTerminationRequest(link, msg);
 							break;
 						case AlgoTermination:
 							terminatedCount++;
@@ -153,7 +160,7 @@ public class SyncGHSThread extends Thread {
             }
             // send a connect request
             Message requestMsg = new Message(Message.MessageType.ConnectRequest);
-            mwoe.sendMessage(requestMsg);
+            outboundMessages.get(mwoe).add(requestMsg);
         } else {
             // forward to children
             for(Link child: node.children) {
@@ -214,35 +221,73 @@ public class SyncGHSThread extends Thread {
     private void processComponentUpdate(Link link, Message msg) {
         String newComponentId = (String) msg.data;
         if(!node.componentId.equals(newComponentId)) {
+            if(node.parent == null) {
+                Message queueMsg = new Message(Message.MessageType.UpdateQueue);
+                queueMsg.data = connectEdges;
+                print(queueMsg.data.toString());
+                // reset connectEdges
+                connectEdges = null;
+                print(String.format("From %s\n", link.destinationId));
+                print("Set connectEdges to null");
+                outboundMessages.get(link).add(queueMsg);
+            }
+
+            node.componentId = newComponentId;
             // forward to all adjacent nodes
-            broadcastToChildren(msg);
-            if(node.parent != null ) {
-                node.parent.sendMessage(msg);
+            if(node.parent != null) {
+                node.children.add(node.parent);
+            }
+            node.parent = link;
+            node.children.remove(node.parent);
+            for(Link child: node.children) {
+                outboundMessages.get(child).add(msg);
             }
 
             // update this node
             node.componentId = newComponentId;
-            node.children.add(node.parent);
-            node.parent = link;
-            node.children.remove(link);
 
-            // send ack
-            Message childUpdate = new Message(Message.MessageType.ChildUpdate, true);
-            link.sendMessage(childUpdate);
-        } else {
-            // send nack
-            Message childUpdate = new Message(Message.MessageType.ChildUpdate, false);
-            link.sendMessage(childUpdate);
+            if(node.children.size() == 0) {
+                // this is a leaf
+                Message ack = new Message(Message.MessageType.ChildUpdateAck);
+                outboundMessages.get(node.parent).add(ack);
+            }
         }
     }
 
-    private void processChildUpdate(Link link, Message msg) {
-        node.children.add(link);
+    private void processChildUpdateAck(Link link, Message msg) {
+        componentUpdateResponses.put(link, true);
+        if(componentUpdateResponses.size() == node.children.size()) {
+            if(node.parent != null) {
+                outboundMessages.get(node.parent).add(msg);
+                componentUpdateResponses.clear();
+            }
+        }
+    }
+
+    private void processAlgoTerminationRequest(Link link, Message msg) {
+        for(Link child : node.children) {
+            outboundMessages.get(child).add(msg);
+        }
+        terminate = true;
+    }
+
+    private void processUpdateQueue(Link link, Message msg) {
+        if(node.parent == null) {
+            if(connectEdges == null) {
+                connectEdges = new ArrayList<Link>();
+            }
+            List<Link> oldEdges = (ArrayList<Link>) msg.data;
+            connectEdges.addAll(oldEdges);
+            connectEdgesUpdated = true;
+        } else {
+            node.parent.sendMessage(msg);
+        }
     }
 
 	public void end() {
-		broadcastMessage(new Message(Message.MessageType.AlgoTermination));
+        broadcastMessage(new Message(Message.MessageType.AlgoTermination));
 		print("Finished");
+        print(String.format("%s\n", node));
 		phaser.arriveAndDeregister();
 	}
 
@@ -254,12 +299,14 @@ public class SyncGHSThread extends Thread {
 	 * Get the minimum weight associated with the node
 	 */
 	public Link findLocalMinEdge() {
-        for(Link candidate : node.potentialLinks) {
+        Iterator<Link> iter = node.potentialLinks.iterator();
+        while(iter.hasNext()) {
+            Link candidate = iter.next();
             boolean isOutgoing = testLink(candidate);
             if(isOutgoing) {
                 return candidate;
             } else {
-                node.potentialLinks.remove(candidate);
+                iter.remove();
                 node.rejectedLinks.add(candidate);
             }
         }
@@ -319,6 +366,7 @@ public class SyncGHSThread extends Thread {
 	 */
 
 	public void connect(Link link) {
+        boolean wasParent = node.parent == null;
         String newComponentID = "";
         Link newParent = null;
         if(link.destinationId.compareTo(node.ID) < 1) {
@@ -330,60 +378,130 @@ public class SyncGHSThread extends Thread {
             newComponentID = node.ID;
             newParent = null;
         }
+        if(node.parent != null)
+            node.children.add(node.parent);
+        // send update to children
         Message msg = new Message(Message.MessageType.ComponentUpdate, newComponentID);
+        print(String.format("Connecting to  %s", link.destinationId));
         broadcastToChildren(msg);
-        if(node.parent != null) {
-            node.parent.sendMessage(msg);
-        }
         node.parent = newParent;
+        // add the new link as a child
+        if(newParent == null) {
+            node.children.add(link);
+        }
 
-        print(String.format("Connecting on %s\n", link));
+        int diff = newParent == null ? 1 : 0;
+        // wait for children to ack
+        while(componentUpdateResponses.size() != node.children.size() - diff) {
+            print("waiting for children");
+            waitForRound();
+        }
+        if(!wasParent) {
+            // wait for connect edges to update
+            while (!connectEdgesUpdated) {
+                waitForRound();
+            }
+        }
+
+        node.potentialLinks.remove(link);
+        print(String.format("Connected on %s\n", link));
 	}
 
 
-
+    private void sendConnectRequest(Link link) {
+        switch (link.state) {
+            case Basic:
+                link.state = Link.State.Connect;
+                break;
+            case Connect:
+                link.state = Link.State.Connected;
+                break;
+            case Connected:
+                print("Something weird happened");
+                break;
+        }
+        Message msg = new Message(Message.MessageType.ConnectRequest);
+        link.sendMessage(msg);
+    }
 
 	public void run() {
         Collections.sort(node.potentialLinks);
         while(true) {
+
             if(node.parent == null) {
                 Link mwoe = findMWOE();
+                if(mwoe == null) {
+                    break;
+                }
                 // check if mwoe is local edge
-                if(node.allLinks.contains(mwoe)) {
-                    // connect
+                if (node.allLinks.contains(mwoe)) {
+                    sendConnectRequest(mwoe);
+                    while (mwoe.state != Link.State.Connected) {
+                        waitForRound();
+                    }
+                    try {
+                        connectEdges.remove(mwoe);
+                    } catch (Exception e) {
+                        print("ERROR");
+                        throw e;
+                    }
                     connect(mwoe);
-                    waitForRound();
-                    waitForRound();
-                    waitForRound();
-                    print(String.format("%s\n", node));
+                    if (connectEdges != null)
+                        print(String.format("EDGES: %s", connectEdges));
                 } else {
                     // broadcast request to children
                     Message connectInit = new Message(Message.MessageType.ConnectInit, mwoe);
                     broadcastToChildren(connectInit);
-                }
-            } else {
-                // participate
-                if(mwoeInitReceived) {
-                    mwoeInitReceived = false;
-                    Link mwoe = findMWOE();
-                    // send candidate to parent
-                    Message mwoeResponse = new Message(Message.MessageType.MWOEResponse, mwoe);
-                    node.parent.sendMessage(mwoeResponse);
-                }
+                    print(String.format("BroadCasting connect to %s", mwoe.destinationId));
+                    // wait for merge to finish
 
-                for(Link link : node.potentialLinks) {
-                    // check if a link is marked as connected
-                    // if so, connect on it
-                    if(link.state == Link.State.Connected) {
-                        connect(link);
-                    }
                 }
             }
-            waitForRound();
+
+            while(true) {
+                while(node.parent == null && connectEdges.size() > 0) {
+                    Link mwoe = connectEdges.remove(0);
+                    if(node.allLinks.contains(mwoe)) {
+                        sendConnectRequest(mwoe);
+                        while(mwoe.state != Link.State.Connected) {
+                            waitForRound();
+                        }
+                        connect(mwoe);
+                        print(String.format("%s\n", node));
+                        if(connectEdges != null)
+                            print(String.format("EDGES: %s", connectEdges));
+                    } else {
+                        // broadcast request to children
+                        Message connectInit = new Message(Message.MessageType.ConnectInit, mwoe);
+                        broadcastToChildren(connectInit);
+                        print(String.format("BroadCasting connect to %s", mwoe.destinationId));
+                        // wait for merge to finish
+                    }
+                }
+                if(node.parent == null) {
+                    break;
+                } else {
+                    if(mwoeInitReceived) {
+                        mwoeInitReceived = false;
+                        Link mwoe = findMWOE();
+                        // send candidate to parent
+                        Message mwoeResponse = new Message(Message.MessageType.MWOEResponse, mwoe);
+                        node.parent.sendMessage(mwoeResponse);
+                    }
+                    for(Link link : node.potentialLinks) {
+                        // check if a link is marked as connected
+                        // if so, connect on it
+                        if(link.state == Link.State.Connected) {
+                            connect(link);
+                            if(connectEdges != null)
+                                print(String.format("EDGES: %s", connectEdges));
+                        }
+                    }
+                }
+                waitForRound();
+            }
         }
-
-
-	}
+    }
 
 	public void waitForRound() {
 		try {

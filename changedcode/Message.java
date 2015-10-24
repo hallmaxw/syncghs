@@ -32,7 +32,8 @@ public class Message {
         ConnectResponse, // sent by target to requester
         ConnectForward, // sent from intermediate node to leader. Data is Link to merge on
         ComponentUpdate, // data is new component ID
-        ChildUpdate, // data is whether or not the sending node is a child
+        ChildUpdateAck, // ComponentUpdate ack
+        UpdateQueue, // data is an ArrayList<Link>
         RoundTermination,
         AlgoTerminationRequest,
         AlgoTermination,
