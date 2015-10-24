@@ -18,6 +18,7 @@ public class SyncGHSThread extends Thread {
     private Map<Link, Link> mwoeResponses; // map to store our children's responses to MWOE search
     private Map<Link, Message> testResponses;
     private Map<Link, Queue<Message>> outboundMessages;
+    private boolean mwoeInitReceived;
 
 	public SyncGHSThread(String id, Phaser phaser) {
 		this.phaser = phaser;
@@ -31,6 +32,7 @@ public class SyncGHSThread extends Thread {
         mwoeResponses = new HashMap<Link, Link>();
         outboundMessages = new HashMap<Link, Queue<Message>>();
         testResponses = new HashMap<Link, Message>();
+        mwoeInitReceived = false;
 	}
 
 	public void broadcastMessage(Message msg) {
@@ -55,6 +57,12 @@ public class SyncGHSThread extends Thread {
                             break;
                         case TestResponse:
                             processTestResponse(link, msg);
+                            break;
+                        case MWOEInit:
+                            mwoeInitReceived = true;
+                            break;
+                        case MWOEResponse:
+                            processMWOEResponse(link, msg);
 						case RoundTermination:
 							roundTerminatedCount++;
 							break;
@@ -71,12 +79,17 @@ public class SyncGHSThread extends Thread {
 		print("Processed messages");
 	}
 
-    public void processTestRequest(Link link, Message msg) {
+    private void processTestRequest(Link link, Message msg) {
         outboundMessages.get(link).add(new Message(Message.MessageType.TestResponse, true));
     }
 
-    public void processTestResponse(Link link, Message msg) {
+    private void processTestResponse(Link link, Message msg) {
         testResponses.put(link, msg);
+    }
+
+    private void processMWOEResponse(Link link, Message msg) {
+        Link data = (Link) msg.data;
+        mwoeResponses.put(link, data);
     }
 
 	public void end() {
@@ -308,10 +321,10 @@ public class SyncGHSThread extends Thread {
 	public void report() {
 
 	}
-	
+
 	/*
-	 * 
-	 * 
+	 *
+	 *
 	 */
 	public void reportMessage(double weight, Link link) {
 
@@ -336,7 +349,15 @@ public class SyncGHSThread extends Thread {
                 break;
             } else {
                 // participate
+                if(mwoeInitReceived) {
+                    mwoeInitReceived = false;
+                    Link mwoe = findMWOE();
+                    // send candidate to parent
+                    Message mwoeResponse = new Message(Message.MessageType.MWOEResponse, mwoe);
+                    node.parent.sendMessage(mwoeResponse);
+                }
             }
+            waitForRound();
         }
 
 

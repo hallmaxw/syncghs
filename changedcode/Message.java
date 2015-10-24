@@ -26,6 +26,7 @@ public class Message {
     enum MessageType {
         TextMessage,
         MWOEInit,
+        MWOEResponse,
         RoundTermination,
         AlgoTerminationRequest,
         AlgoTermination,
