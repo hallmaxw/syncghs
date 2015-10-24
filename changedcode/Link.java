@@ -28,9 +28,10 @@ public class Link implements Comparable {
 		this.destinationId = destinationId;
         this.sourceId = sourceId;
 		this.weight = weight;
+        state = State.Basic;
 		inboundMessages = Collections.synchronizedList(new ArrayList<Message>());
 		outboundMessages = Collections.synchronizedList(new ArrayList<Message>());
-	} 
+	}
 	
 	/*
 	 * Default Constructor to initialize the weight to 0
@@ -45,6 +46,7 @@ public class Link implements Comparable {
 		this.weight = weight;
 		this.inboundMessages = inboundMessages;
 		this.outboundMessages = outboundMessages;
+        this.state = State.Basic;
 	}
 
 	public void sendMessage(Message msg) {
@@ -65,7 +67,7 @@ public class Link implements Comparable {
 	}
 	
 	enum State {
-        Basic, Branch , Rejected
+        Basic, Connect, Connected
     }
 
     @Override

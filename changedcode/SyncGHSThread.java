@@ -20,6 +20,7 @@ public class SyncGHSThread extends Thread {
     private Map<Link, Queue<Message>> outboundMessages;
     private Map<Link, Message> testRequests; //test requests that we can't respond to yet
     private boolean mwoeInitReceived;
+    private List<Link> connectEdges; // list of edges to connect on. Should be empty if not leader
 
 	public SyncGHSThread(String id, Phaser phaser) {
 		this.phaser = phaser;
@@ -35,6 +36,7 @@ public class SyncGHSThread extends Thread {
         testResponses = new HashMap<Link, Message>();
         testRequests = new HashMap<Link, Message>();
         mwoeInitReceived = false;
+        connectEdges = new ArrayList<Link>();
 	}
 
 	public void broadcastMessage(Message msg) {
@@ -42,6 +44,12 @@ public class SyncGHSThread extends Thread {
 			link.sendMessage(msg);
 		}
 	}
+
+    private void broadcastToChildren(Message msg) {
+        for (Link link : node.children) {
+            link.sendMessage(msg);
+        }
+    }
 
 	public void processMessages() {
 		int roundTerminatedCount = 0;
@@ -65,6 +73,18 @@ public class SyncGHSThread extends Thread {
                             break;
                         case MWOEResponse:
                             processMWOEResponse(link, msg);
+                            break;
+                        case ConnectInit:
+                            processConnectInit(link, msg);
+                            break;
+                        case ConnectRequest:
+                            processConnectRequest(link, msg);
+                            break;
+                        case ConnectResponse:
+                            processConnectResponse(link, msg);
+                            break;
+                        case ConnectForward:
+                            processConnectForward(link, msg);
 						case RoundTermination:
 							roundTerminatedCount++;
 							break;
@@ -78,7 +98,7 @@ public class SyncGHSThread extends Thread {
 				}
 			}
 		}
-		print("Processed messages");
+		//print("Processed messages");
 	}
 
     private void processTestRequest(Link link, Message msg) {
@@ -105,6 +125,80 @@ public class SyncGHSThread extends Thread {
     private void processMWOEResponse(Link link, Message msg) {
         Link data = (Link) msg.data;
         mwoeResponses.put(link, data);
+    }
+
+    /*
+        tell children to merge on the provided edge
+     */
+    private void processConnectInit(Link link, Message msg) {
+        Link mwoe = (Link) msg.data;
+        if(node.allLinks.contains(mwoe)) {
+            switch(mwoe.state) {
+                case Basic:
+                    mwoe.state = Link.State.Connect;
+                    break;
+                case Connect:
+                    mwoe.state = Link.State.Connected;
+                    break;
+                case Connected:
+                    print("Something weird happened");
+                    break;
+            }
+        } else {
+            // forward to children
+            for(Link child: node.children) {
+                outboundMessages.get(child).add(msg);
+            }
+        }
+    }
+
+    /*
+
+     */
+    private void processConnectRequest(Link link, Message msg) {
+        switch(link.state) {
+            case Basic:
+                link.state = Link.State.Connect;
+                break;
+            case Connect:
+                link.state = Link.State.Connected;
+                break;
+            case Connected:
+                print("Something weird happened");
+                break;
+        }
+        // if leader, add to list
+        if (node.parent == null) {
+            connectEdges.add(link);
+        } else {
+            Message forwardMsg = new Message(Message.MessageType.ConnectForward, link);
+            node.parent.sendMessage(forwardMsg);
+        }
+    }
+
+    /*
+        Forward the connect to the leader
+     */
+    private void processConnectForward(Link link, Message msg) {
+        if (node.parent == null) {
+            connectEdges.add(link);
+        } else {
+            node.parent.sendMessage(msg);
+        }
+    }
+
+    private void processConnectResponse(Link link, Message msg) {
+        switch(link.state) {
+            case Basic:
+                print("Someting weird happened");
+                break;
+            case Connect:
+                link.state = Link.State.Connected;
+                break;
+            case Connected:
+                print("Something weird happened");
+                break;
+        }
     }
 
 	public void end() {
@@ -182,128 +276,28 @@ public class SyncGHSThread extends Thread {
         return bestCandidate;
     }
 
-
-	/*
-	 * (non-Javadoc) read messages and then process
-	 */
-
-	public void readMessage() {
-//		for (Link link : node.allLinks) {
-//            List<Message> inboundMsgs = idMessageInboundMap.get(link.destinationId);
-//			synchronized (inboundMsgs) {
-//                while(inboundMsgs.size() > 0) {
-//                    Message message = inboundMsgs.remove(0);
-//                    switch (message.type) {
-//                        case Connect:
-//                            connect(message.level, link);
-//                            break;
-//                        case TestMessage :
-//                            testMessage(message.level, node.ID, link);
-//                            break;
-//                        case Accept :
-//                            accept(link);
-//                            break;
-//                        case Reject :
-//                            reject(link);
-//                        case ReportMessage :
-//                            reportMessage(link.weight, link);
-//                            break;
-//                        case ChangeRootMessage :
-//                            changeRootMessage();
-//                            break;
-//
-//                    }
-//                }
-//			}
-//		}
-	}
-
 	/*
 	 * (non-Javadoc)
 	 * Attempts to merge two trees
 	 * @see java.lang.Thread#run()
 	 */
 
-	public void connect(int L, Link link) {
-		// TODO: add this feature
-		// if this node is sleeping then make a wake up call
+	public void connect(Link link) {
+        // send connect request
+        link.sendMessage(new Message(Message.MessageType.ConnectRequest));
+        // wait for response
 
-		if (L < this.level) {
-			// change to Branch State
-			link.state = Link.State.Branch;
+        if(link.destinationId.compareTo(node.ID) < 1) {
+            // other node is leader
+        } else  {
+            // this node is leader
 
-		} else if (link.state == Link.State.Basic) { // connect
-			Message message = new Message();
-			message.type = Message.MessageType.Connect;
-			message.level = L;
-			message.weight = link.weight;
-		}
-
-		else { // Initiate
-			Message message = new Message();
-			message.type = Message.MessageType.Initiate;
-			message.level = L + 1;
-			message.state = Message.State.Find;
-			message.weight = link.weight;
-
-		}
+        }
+        print(String.format("Connecting on %s\n", link));
 	}
 
 
-	public void test() {
-//		double min = Double.MAX_VALUE;
-//		Link minLink = null;
-//		for (Link link : node.allLinks) {
-//			if (link.state == Link.State.Basic) {
-//				if (min > link.weight) {
-//					minLink = link;
-//					min = link.weight;
-//				}
-//			}
-//		}
-//
-//		if (min != Double.MAX_VALUE) {
-//			this.testLink = minLink;
-//			Message message = new Message();
-//			message.type = Message.MessageType.TestMessage;
-//			message.level = this.level;
-//			message.id = this.node.ID;
-//			message.weight = minLink.weight;
-//			idMessageInboundMap.get(minLink.destinationId).add(message);
-//		} else {
-//			this.testLink = null;
-//			// call function report
-//		}
 
-	}
-
-	public void testMessage(int L, String id, Link link) {
-//		if (L > this.level) {
-//			Message message = new Message();
-//			message.type = Message.MessageType.TestMessage;
-//			message.level = L;
-//			message.id = id;
-//			message.weight = link.weight;
-//			idMessageInboundMap.get(this.node.ID).add(message);
-//		} else if (id == this.node.ID) {
-//			if (link.state == Link.State.Basic)
-//				link.state = Link.State.Rejected;
-//
-//			if (link != this.testLink) {
-//				Message message = new Message();
-//				message.type = Message.MessageType.Reject; // Reject
-//				message.weight = link.weight;
-//				idMessageInboundMap.get(link.destinationId).add(message);
-//			} else {
-//				test();
-//			}
-//		} else {
-//			Message message = new Message();
-//			message.type = Message.MessageType.Accept;
-//			message.weight = link.weight;
-//			idMessageInboundMap.get(link.destinationId).add(message);
-//		}
-	}
 
 	/*
 	 * 
@@ -326,11 +320,11 @@ public class SyncGHSThread extends Thread {
 
 	public void reject(Link link) {
 		if (link.state == Link.State.Basic) {
-			link.state = Link.State.Rejected;
+			//link.state = Link.State.Rejected;
 
 		}
 
-		test();
+
 	}
 	
 	public void report() {
@@ -361,6 +355,15 @@ public class SyncGHSThread extends Thread {
         while(true) {
             if(node.parent == null) {
                 Link mwoe = findMWOE();
+                // check if mwoe is local edge
+                if(node.allLinks.contains(mwoe)) {
+                    // connect
+                    connect(mwoe);
+                } else {
+                    // broadcast request to children
+                    Message connectInit = new Message(Message.MessageType.ConnectInit, mwoe);
+                    broadcastToChildren(connectInit);
+                }
                 break;
             } else {
                 // participate
@@ -370,6 +373,14 @@ public class SyncGHSThread extends Thread {
                     // send candidate to parent
                     Message mwoeResponse = new Message(Message.MessageType.MWOEResponse, mwoe);
                     node.parent.sendMessage(mwoeResponse);
+                }
+
+                for(Link link : node.potentialLinks) {
+                    // check if a link is marked as connected
+                    // if so, connect on it
+                    if(link.state == Link.State.Connected) {
+                        connect(link);
+                    }
                 }
             }
             waitForRound();

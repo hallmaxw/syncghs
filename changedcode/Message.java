@@ -27,6 +27,10 @@ public class Message {
         TextMessage,
         MWOEInit,
         MWOEResponse,
+        ConnectInit, // data is the Link to merge on
+        ConnectRequest, // sent by requester to target
+        ConnectResponse, // sent by target to requester
+        ConnectForward, // sent from intermediate node to leader. Data is Link to merge on
         RoundTermination,
         AlgoTerminationRequest,
         AlgoTermination,
