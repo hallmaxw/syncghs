@@ -95,11 +95,13 @@ public class SyncGHSThread extends Thread {
         waitForRound();
 
         broadcastMessage(new Message(Message.MessageType.AlgoTerminationRequest));
+        broadcastMessage(new Message(Message.MessageType.RoundTermination));
+        processMessages();
 
         while(requestedTerminationCount < links.size()) {
+            waitForRound();
             broadcastMessage(new Message(Message.MessageType.RoundTermination));
             processMessages();
-            waitForRound();
         }
 
         end();

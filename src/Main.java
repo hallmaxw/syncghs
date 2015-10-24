@@ -20,8 +20,8 @@ public class Main {
     //static final int numThreads = 5;
 
     public static void main(String[] args) {
-        String inputPath = "D:\\git\\HackerRankCodes\\SynchGHS\\src\\input.txt";
-    	//String inputPath = "/Users/maxwell/syncghs/input-file.txt";
+        //String inputPath = "D:\\git\\HackerRankCodes\\SynchGHS\\src\\input.txt";
+    	String inputPath = "/Users/maxwell/syncghs/input-file.txt";
     	DataSource dsSource = new DataSource();
     	dsSource.readThreadIds(inputPath);
     	Phaser phaser = new Phaser(dsSource.getNumThreads());

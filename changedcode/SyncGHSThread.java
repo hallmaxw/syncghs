@@ -144,6 +144,9 @@ public class SyncGHSThread extends Thread {
                     print("Something weird happened");
                     break;
             }
+            // send a connect request
+            Message requestMsg = new Message(Message.MessageType.ConnectRequest);
+            mwoe.sendMessage(requestMsg);
         } else {
             // forward to children
             for(Link child: node.children) {
@@ -298,57 +301,6 @@ public class SyncGHSThread extends Thread {
 
 
 
-
-	/*
-	 * 
-	 */
-	public void accept(Link link) {
-//		this.testLink = null;
-//		if (link.weight < this.bestWeight) {
-//			this.bestWeight = link.weight;
-//		}
-
-		// call report fucntion
-	}
-
-	/*
-	 * 
-	 * (non-Javadoc)
-	 * 
-	 * @see java.lang.Thread#run()
-	 */
-
-	public void reject(Link link) {
-		if (link.state == Link.State.Basic) {
-			//link.state = Link.State.Rejected;
-
-		}
-
-
-	}
-	
-	public void report() {
-
-	}
-
-	/*
-	 *
-	 *
-	 */
-	public void reportMessage(double weight, Link link) {
-
-	}
-
-	public void changeRoot() {
-		Message message = new Message();
-		
-	}
-
-
-	
-	public void changeRootMessage() {
-		changeRoot();
-	}
 
 	public void run() {
         Collections.sort(node.potentialLinks);
