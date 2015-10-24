@@ -20,8 +20,8 @@ public class Main {
     //static final int numThreads = 5;
 
     public static void main(String[] args) {
-        String inputPath = "D:\\git\\HackerRankCodes\\SynchGHS\\src\\input.txt";
-    	//String inputPath = "/Users/maxwell/syncghs/input-file.txt";
+        //String inputPath = "D:\\git\\HackerRankCodes\\SynchGHS\\src\\input.txt";
+    	String inputPath = "/Users/maxwell/syncghs/input-file.txt";
     	DataSource dsSource = new DataSource();
     	dsSource.readThreadIds(inputPath);
     	Phaser phaser = new Phaser(dsSource.getNumThreads());
@@ -33,9 +33,9 @@ public class Main {
         
         // building links with weights 
         dsSource.readWeights(inputPath, threads);
-        threads.values().forEach((SyncGHSThread t) -> {
-            System.out.println(t);
-        });
+//        threads.values().forEach((SyncGHSThread t) -> {
+//            System.out.println(t);
+//        });
 
 
         threads.values().forEach(Thread::start);

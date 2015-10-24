@@ -1,34 +1,30 @@
+import java.util.ArrayList;
+import java.util.List;
+
 /*
  * created by : Prashant Prakash
  * created_date : 14th oct 2015 
  */
 public class Node {
-	private int parent;
-	private int state;
-	private int id;
+    public String ID;
+    public Link parent;
+    public List<Link> children;
+    public List<Link> potentialLinks; // Links that are potentially merge links
+    public List<Link> rejectedLinks;
+    public List<Link> allLinks; // list of all links
 
-	public int getParent() {
-		return parent;
-	}
+    public Node(String ID) {
+        this.ID = ID;
+        parent = null;
+        children = new ArrayList<Link>();
+        potentialLinks = new ArrayList<Link>();
+        rejectedLinks = new ArrayList<Link>();
+        allLinks = new ArrayList<Link>();
+    }
 
-	public void setParent(int parent) {
-		this.parent = parent;
-	}
-
-	public int getState() {
-		return state;
-	}
-
-	public void setState(int state) {
-		this.state = state;
-	}
-
-	public int getId() {
-		return id;
-	}
-
-	public void setId(int id) {
-		this.id = id;
-	}
+    public void addLink(Link link) {
+        potentialLinks.add(link);
+        allLinks.add(link);
+    }
 
 }

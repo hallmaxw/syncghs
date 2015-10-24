@@ -2,40 +2,34 @@
  * Created by maxwell on 10/10/15.
  */
 import java.nio.file.LinkOption;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.SynchronousQueue;
 
 public class SyncGHSThread extends Thread {
 	private String id;
 	private String componentId;
+    private String leaderID;
 	private Phaser phaser;
-	private List<Link> links;
+    private Node node;
 	private State state;
 	private int round;
 	private int requestedTerminationCount;
 	private int terminatedCount;
-	private String leaderID;
 	private int level;
 	private Queue<Message> inboundMessage;
 	private Link testLink;
 	private Map<String, List<Message>> idMessageInboundMap;
-	private Link bestLink;
 	private double bestWeight;
-	private String parentId;
 	private int findCount;
-    
+
 	public SyncGHSThread(String id, Phaser phaser) {
 		this.id = id;
 		this.componentId = id;
 		this.phaser = phaser;
 		this.leaderID = id;
-		this.links = new ArrayList<Link>();
 		this.state = State.Initialization;
+        node = new Node(id);
 		round = 1;
 		requestedTerminationCount = 0;
 		terminatedCount = 0;
@@ -45,50 +39,38 @@ public class SyncGHSThread extends Thread {
 		testLink = new Link();
 	}
 
-	public SyncGHSThread(String id, List<Link> links, Phaser phaser) {
-		this.id = id;
-		this.componentId = id;
-		this.links = links;
-		this.phaser = phaser;
-		this.state = State.Initialization;
-		round = 1;
-		requestedTerminationCount = 0;
-		terminatedCount = 0;
-		
-	}
-
 	public void broadcastMessage(Message msg) {
-		for (Link link : links) {
+		for (Link link : node.allLinks) {
 			link.sendMessage(msg);
 		}
 	}
 
-	public void processMessages() {
-		int roundTerminatedCount = 0;
-		while (roundTerminatedCount < links.size() - terminatedCount) {
-			for (Link link : links) {
-				synchronized (link.inboundMessages) {
-					while (!link.inboundMessages.isEmpty()) {
-						Message msg = link.inboundMessages.remove(0);
-						switch (msg.type) {
-						case TextMessage:
-							print(String.format("Received message:(%s) %s", msg.type.name(), msg.data));
-							break;
-						case RoundTermination:
-							roundTerminatedCount++;
-							break;
-						case AlgoTerminationRequest:
-							requestedTerminationCount++;
-							break;
-						case AlgoTermination:
-							terminatedCount++;
-						}
-					}
-				}
-			}
-		}
-		print("Processed messages");
-	}
+//	public void processMessages() {
+//		int roundTerminatedCount = 0;
+//		while (roundTerminatedCount < links.size() - terminatedCount) {
+//			for (Link link : links) {
+//				synchronized (link.inboundMessages) {
+//					while (!link.inboundMessages.isEmpty()) {
+//						Message msg = link.inboundMessages.remove(0);
+//						switch (msg.type) {
+//						case TextMessage:
+//							print(String.format("Received message:(%s) %s", msg.type.name(), msg.data));
+//							break;
+//						case RoundTermination:
+//							roundTerminatedCount++;
+//							break;
+//						case AlgoTerminationRequest:
+//							requestedTerminationCount++;
+//							break;
+//						case AlgoTermination:
+//							terminatedCount++;
+//						}
+//					}
+//				}
+//			}
+//		}
+//		print("Processed messages");
+//	}
 
 	public void end() {
 		broadcastMessage(new Message(Message.MessageType.AlgoTermination));
@@ -104,71 +86,61 @@ public class SyncGHSThread extends Thread {
 	 * Get the minimum weight associated with the node
 	 */
 	public Link findMinEdge() {
-		Link minLink = new Link();
-		for (Link link : links) {
-			if (link.weight < minLink.weight) {
-				minLink = link;
-			}
-		}
-
-		return minLink;
+        print(String.format("MIN: %s", node.potentialLinks.get(0).toString()));
+        return node.potentialLinks.get(0);
 	}
 
-	
+    public Link findMWOE() {
+        // Find local candidate
+        Link localCand = findMinEdge();
+        if(node.parent == null) { // local leader
 
-	/*
-	 * wake up function to intiate one
-	 */
-	
-	public void wakeup() {
-		Link link = findMinEdge();
-		link.state = null; // assign state as 1 which is find for other side of edge
-		this.level = 0;
-		this.state = State.Found;
-		this.findCount = 0;
-		Message message  = new Message();
-		message.type = Message.MessageType.Connect;
-		message.weight = link.weight;
-		idMessageInboundMap.get(link.destinationId).add(message);
-	}
+        }
+        return null;
+    }
+
+
 	/*
 	 * (non-Javadoc) read messages and then process
 	 */
 
 	public void readMessage() {
-		for (Link link : links) {
-			synchronized (idMessageInboundMap.get(link.destinationId)) {
-				Message message = idMessageInboundMap.get(link.destinationId).remove(0);
-				switch (message.type) {
-				case Connect:
-					connect(message.level, link);
-					break;
-				case Initiate :
-					initiate(message.level, id, state);
-					break;
-				case TestMessage :
-					testMessage(message.level, id, link);
-					break;
-				case Accept : 
-					accept(link);
-					break;
-				case Reject :
-					reject(link);
-				case ReportMessage :
-					reportMessage(link.weight, link);
-					break;
-				case ChangeRootMessage : 
-					changeRootMessage();
-					break;
-				
-				}
+		for (Link link : node.allLinks) {
+            List<Message> inboundMsgs = idMessageInboundMap.get(link.destinationId);
+			synchronized (inboundMsgs) {
+                while(inboundMsgs.size() > 0) {
+                    Message message = inboundMsgs.remove(0);
+                    switch (message.type) {
+                        case Connect:
+                            connect(message.level, link);
+                            break;
+                        case Initiate :
+                            initiate(message.level, id, state);
+                            break;
+                        case TestMessage :
+                            testMessage(message.level, id, link);
+                            break;
+                        case Accept :
+                            accept(link);
+                            break;
+                        case Reject :
+                            reject(link);
+                        case ReportMessage :
+                            reportMessage(link.weight, link);
+                            break;
+                        case ChangeRootMessage :
+                            changeRootMessage();
+                            break;
+
+                    }
+                }
 			}
 		}
 	}
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 * Attempts to merge two trees
 	 * @see java.lang.Thread#run()
 	 */
 
@@ -207,7 +179,7 @@ public class SyncGHSThread extends Thread {
 		this.level = L;
 		this.id = id;
 		this.state = State.Find;
-		for (Link link : links) {
+		for (Link link : node.allLinks) {
 			if (link.state == Link.State.Branch) { // 1 is for Branch
 				Message message = new Message();
 				message.type = Message.MessageType.Initiate;
@@ -227,7 +199,7 @@ public class SyncGHSThread extends Thread {
 	public void test() {
 		double min = Double.MAX_VALUE;
 		Link minLink = null;
-		for (Link link : links) {
+		for (Link link : node.allLinks) {
 			if (link.state == Link.State.Basic) {
 				if (min > link.weight) {
 					minLink = link;
@@ -286,7 +258,6 @@ public class SyncGHSThread extends Thread {
 		this.testLink = null;
 		if (link.weight < this.bestWeight) {
 			this.bestWeight = link.weight;
-			this.bestLink = link;
 		}
 
 		// call report fucntion
@@ -309,21 +280,21 @@ public class SyncGHSThread extends Thread {
 	}
 	
 	public void report() {
-		int k =0 ;
-		for (Link link : links) {
-			 if(link.state == Link.State.Branch && link.destinationId != this.parentId) 
-				 k++;
-		}
-		
-		if(findCount == k && this.testLink == null) {
-			this.state = null; // 2 have to assigneed here 
-			Message message = new Message();
-			message.type = Message.MessageType.ReportMessage;
-			// message.weight = this.bestWeight;
-			// message.weight = 				 // we need srouce destination mapping in link
-			// idMessageInboundMap.get(key)      // same as above
-		}
-		
+//		int k =0 ;
+//		for (Link link : links) {
+//			 if(link.state == Link.State.Branch && link.destinationId != this.parentId)
+//				 k++;
+//		}
+//
+//		if(findCount == k && this.testLink == null) {
+//			this.state = null; // 2 have to assigneed here
+//			Message message = new Message();
+//			message.type = Message.MessageType.ReportMessage;
+//			// message.weight = this.bestWeight;
+//			// message.weight = 				 // we need srouce destination mapping in link
+//			// idMessageInboundMap.get(key)      // same as above
+//		}
+//
 	}
 	
 	/*
@@ -331,27 +302,27 @@ public class SyncGHSThread extends Thread {
 	 * 
 	 */
 	public void reportMessage(double weight, Link link) {
-		if(link.destinationId != this.parentId) {
-			if(weight < this.bestWeight) {
-				this.bestLink = link;
-				this.bestWeight = weight;
-			}
-			
-			// increment find count by 1 
-			// call report function
-		}
-		else {
-			if(this.state == State.Find) {
-				Message message  = new Message();
-				message.type =  null ; // have to add 5 here what is it ? 
-				message.weight =weight;
-				idMessageInboundMap.get(this.id).add(message);
-			} else if(weight > this.bestWeight) {
-				// call change root function
-			} else {
-				// print output  // stop the program
-			}
-		}
+//		if(link.destinationId != this.parentId) {
+//			if(weight < this.bestWeight) {
+//				this.bestLink = link;
+//				this.bestWeight = weight;
+//			}
+//
+//			// increment find count by 1
+//			// call report function
+//		}
+//		else {
+//			if(this.state == State.Find) {
+//				Message message  = new Message();
+//				message.type =  null ; // have to add 5 here what is it ?
+//				message.weight =weight;
+//				idMessageInboundMap.get(this.id).add(message);
+//			} else if(weight > this.bestWeight) {
+//				// call change root function
+//			} else {
+//				// print output  // stop the program
+//			}
+//		}
 	}
 
 	public void changeRoot() {
@@ -366,22 +337,8 @@ public class SyncGHSThread extends Thread {
 	}
 
 	public void run() {
-		/*state = State.SendMessages;
-		sendHelloMessages();
-		broadcastMessage(new Message(Message.MessageType.RoundTermination));
-		processMessages();
-		waitForRound();
-
-		broadcastMessage(new Message(Message.MessageType.AlgoTerminationRequest));
-
-		while (requestedTerminationCount < links.size()) {
-			broadcastMessage(new Message(Message.MessageType.RoundTermination));
-			processMessages();
-			waitForRound();
-		}
-
-		end();*/
-		wakeup();
+        Collections.sort(node.potentialLinks);
+        Link mwoe = findMWOE();
 		readMessage();
 		
 	}
@@ -396,7 +353,7 @@ public class SyncGHSThread extends Thread {
 	}
 
 	public void addLink(Link link) {
-		links.add(link);
+		node.addLink(link);
         idMessageInboundMap.put(link.destinationId, link.inboundMessages);
 	}
 
@@ -407,7 +364,7 @@ public class SyncGHSThread extends Thread {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append(String.format("THREAD %s\n", id));
-		for (Link link : links) {
+		for (Link link : node.allLinks) {
 			builder.append(String.format("%s -- %s --> %s\n", id, link.weight, link.destinationId));
 		}
 		return builder.toString();
