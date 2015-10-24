@@ -29,4 +29,11 @@ public class Node {
         allLinks.add(link);
     }
 
+    public String toString() {
+        if(parent == null) {
+            return String.format("(ID %s) I'm leader", ID);
+        } else {
+            return String.format("(ID %s) Parent: %s", ID, parent.destinationId);
+        }
+    }
 }

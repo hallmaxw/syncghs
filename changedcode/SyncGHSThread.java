@@ -85,6 +85,13 @@ public class SyncGHSThread extends Thread {
                             break;
                         case ConnectForward:
                             processConnectForward(link, msg);
+                            break;
+                        case ComponentUpdate:
+                            processComponentUpdate(link, msg);
+                            break;
+                        case ChildUpdate:
+                            processChildUpdate(link, msg);
+                            break;
 						case RoundTermination:
 							roundTerminatedCount++;
 							break;
@@ -204,6 +211,35 @@ public class SyncGHSThread extends Thread {
         }
     }
 
+    private void processComponentUpdate(Link link, Message msg) {
+        String newComponentId = (String) msg.data;
+        if(!node.componentId.equals(newComponentId)) {
+            // forward to all adjacent nodes
+            broadcastToChildren(msg);
+            if(node.parent != null ) {
+                node.parent.sendMessage(msg);
+            }
+
+            // update this node
+            node.componentId = newComponentId;
+            node.children.add(node.parent);
+            node.parent = link;
+            node.children.remove(link);
+
+            // send ack
+            Message childUpdate = new Message(Message.MessageType.ChildUpdate, true);
+            link.sendMessage(childUpdate);
+        } else {
+            // send nack
+            Message childUpdate = new Message(Message.MessageType.ChildUpdate, false);
+            link.sendMessage(childUpdate);
+        }
+    }
+
+    private void processChildUpdate(Link link, Message msg) {
+        node.children.add(link);
+    }
+
 	public void end() {
 		broadcastMessage(new Message(Message.MessageType.AlgoTermination));
 		print("Finished");
@@ -273,9 +309,6 @@ public class SyncGHSThread extends Thread {
         } else {
             bestCandidate = localCandidate;
         }
-        if(node.parent == null) { // local leader
-            print(String.format("%s\n", bestCandidate));
-        }
         return bestCandidate;
     }
 
@@ -286,16 +319,24 @@ public class SyncGHSThread extends Thread {
 	 */
 
 	public void connect(Link link) {
-        // send connect request
-        link.sendMessage(new Message(Message.MessageType.ConnectRequest));
-        // wait for response
-
+        String newComponentID = "";
+        Link newParent = null;
         if(link.destinationId.compareTo(node.ID) < 1) {
             // other node is leader
+            newComponentID = link.destinationId;
+            newParent = link;
         } else  {
             // this node is leader
-
+            newComponentID = node.ID;
+            newParent = null;
         }
+        Message msg = new Message(Message.MessageType.ComponentUpdate, newComponentID);
+        broadcastToChildren(msg);
+        if(node.parent != null) {
+            node.parent.sendMessage(msg);
+        }
+        node.parent = newParent;
+
         print(String.format("Connecting on %s\n", link));
 	}
 
@@ -311,12 +352,15 @@ public class SyncGHSThread extends Thread {
                 if(node.allLinks.contains(mwoe)) {
                     // connect
                     connect(mwoe);
+                    waitForRound();
+                    waitForRound();
+                    waitForRound();
+                    print(String.format("%s\n", node));
                 } else {
                     // broadcast request to children
                     Message connectInit = new Message(Message.MessageType.ConnectInit, mwoe);
                     broadcastToChildren(connectInit);
                 }
-                break;
             } else {
                 // participate
                 if(mwoeInitReceived) {
