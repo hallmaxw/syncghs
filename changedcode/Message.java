@@ -24,7 +24,19 @@ public class Message {
     }
 
     enum MessageType {
-        TextMessage, RoundTermination, AlgoTerminationRequest, AlgoTermination, Connect , Initiate , TestMessage , Reject ,Accept , ReportMessage , ChangeRootMessage
+        TextMessage,
+        MWOEInit,
+        RoundTermination,
+        AlgoTerminationRequest,
+        AlgoTermination,
+        Connect,
+        Initiate,
+        TestRequest,
+        TestResponse,
+        Reject,
+        Accept,
+        ReportMessage,
+        ChangeRootMessage
     }
     
     enum State {
