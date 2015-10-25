@@ -27,6 +27,7 @@ public class SyncGHSThread extends Thread {
     private boolean terminate;
     private int connectEdgesUpdates;
     private boolean mergeFinished;
+    private Map<Link, Integer> levelMap;
 
 	public SyncGHSThread(String id, Phaser phaser) {
 		this.phaser = phaser;
@@ -45,6 +46,7 @@ public class SyncGHSThread extends Thread {
         terminate = false;
         connectEdgesUpdates = 0;
         mergeFinished = false;
+        levelMap = new HashMap<>();
 	}
 
     /*
@@ -130,6 +132,7 @@ public class SyncGHSThread extends Thread {
 	}
 
     private void processTestRequest(Link link, Message msg) {
+        levelMap.put(link, msg.level);
         if(msg.level > level) {
             // need to wait to respond
             testRequests.put(link, msg);
@@ -141,6 +144,26 @@ public class SyncGHSThread extends Thread {
             outboundMessages.get(link).add(responseMsg);
         }
     }
+
+    private void processOldTestRequests(){
+        Iterator<Map.Entry<Link, Message>> iter = testRequests.entrySet().iterator();
+        while(iter.hasNext()) {
+            print("Waiting test requests");
+            Map.Entry<Link, Message> entry = iter.next();
+            Message msg = entry.getValue();
+            if(msg.level > level) {
+                // still wait
+            } else {
+                // respond now
+                Link link = entry.getKey();
+                String reqComponent  = (String) msg.data;
+                Message responseMsg = new Message(Message.MessageType.TestResponse);
+                responseMsg.data = !reqComponent.equals(node.componentId);
+                outboundMessages.get(link).add(responseMsg);
+            }
+        }
+    }
+
 
     private void processTestResponse(Link link, Message msg) {
         // test responses need to be acted on later
@@ -175,6 +198,7 @@ public class SyncGHSThread extends Thread {
             }
             // send a connect request
             Message requestMsg = new Message(Message.MessageType.ConnectRequest);
+            requestMsg.level = level;
             outboundMessages.get(mwoe).add(requestMsg);
         } else {
             // forward to children
@@ -192,6 +216,7 @@ public class SyncGHSThread extends Thread {
         Else, send a ConnectForward message up to the parent
      */
     private void processConnectRequest(Link link, Message msg) {
+        levelMap.put(link, msg.level);
         switch(link.state) {
             case Basic:
                 link.state = Link.State.Connect;
@@ -271,6 +296,7 @@ public class SyncGHSThread extends Thread {
         node.parent = link;
         node.children.remove(node.parent);
         node.componentId = newComponentId;
+        level = msg.level;
         // forward update to children
         for(Link child: node.children) {
             outboundMessages.get(child).add(msg);
@@ -418,19 +444,32 @@ public class SyncGHSThread extends Thread {
         boolean wasLeader = node.parent == null;
         String newComponentID;
         Link newParent;
+        int newLevel;
         if(link.destinationId.compareTo(node.ID) < 1) {
             // other node is new leader
             newComponentID = link.destinationId;
             newParent = link;
+            if(levelMap.get(link) == level) {
+                newLevel = level + 1;
+            } else {
+                newLevel = levelMap.get(link);
+            }
         } else  {
             // this node is new leader
             newComponentID = node.ID;
             newParent = null;
+            if(levelMap.get(link) == level) {
+                newLevel = level + 1;
+            } else {
+                newLevel = level;
+            }
         }
         if(!wasLeader)
             node.children.add(node.parent);
         // send update to children
+        level = newLevel;
         Message msg = new Message(Message.MessageType.ComponentUpdate, newComponentID);
+        msg.level = level;
         broadcastToChildren(msg);
         if(DEBUG) {
             print(String.format("Connecting to  %s", link.destinationId));
@@ -487,6 +526,7 @@ public class SyncGHSThread extends Thread {
         }
         if(DEBUG)
             print(String.format("Connected on %s\n", link));
+        processOldTestRequests();
 	}
 
 
@@ -503,6 +543,7 @@ public class SyncGHSThread extends Thread {
                 break;
         }
         Message msg = new Message(Message.MessageType.ConnectRequest);
+        msg.level = level;
         link.sendMessage(msg);
     }
 
@@ -524,7 +565,6 @@ public class SyncGHSThread extends Thread {
                     while (mwoe.state != Link.State.Connected) {
                         waitForRound();
                     }
-                    //connectEdges.remove(mwoe);
                     connect(mwoe);
                     node.potentialLinks.remove(mwoe);
                     if (connectEdges != null)
@@ -536,7 +576,6 @@ public class SyncGHSThread extends Thread {
                     broadcastToChildren(connectInit);
                     if(DEBUG)
                         print(String.format("BroadCasting mwoe connect to %s", mwoe));
-                    //connectEdges.remove(mwoe);
                     // wait until merge is complete
                     while (!mergeFinished) {
                         waitForRound();
@@ -553,7 +592,6 @@ public class SyncGHSThread extends Thread {
                         while(mwoe.state != Link.State.Connected) {
                             waitForRound();
                         }
-                        //connectEdges.remove(mwoe);
                         connect(mwoe);
                         node.potentialLinks.remove(mwoe);
                         if(DEBUG)
@@ -567,7 +605,6 @@ public class SyncGHSThread extends Thread {
                         broadcastToChildren(connectInit);
                         if(DEBUG)
                             print(String.format("BroadCasting other connect to %s", mwoe));
-                        //connectEdges.remove(mwoe);
                         while(!mergeFinished) {
                             waitForRound();
                         }
