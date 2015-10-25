@@ -148,18 +148,21 @@ public class SyncGHSThread extends Thread {
     private void processOldTestRequests(){
         Iterator<Map.Entry<Link, Message>> iter = testRequests.entrySet().iterator();
         while(iter.hasNext()) {
-            print("Waiting test requests");
+
             Map.Entry<Link, Message> entry = iter.next();
             Message msg = entry.getValue();
+            Link link = entry.getKey();
+            if(DEBUG)
+                print(String.format("Old test request (My level: %d) (Source: %s) (Msg level: %d)", level, link.destinationId, msg.level));
             if(msg.level > level) {
                 // still wait
             } else {
                 // respond now
-                Link link = entry.getKey();
                 String reqComponent  = (String) msg.data;
                 Message responseMsg = new Message(Message.MessageType.TestResponse);
                 responseMsg.data = !reqComponent.equals(node.componentId);
                 outboundMessages.get(link).add(responseMsg);
+                iter.remove();
             }
         }
     }
@@ -297,6 +300,8 @@ public class SyncGHSThread extends Thread {
         node.children.remove(node.parent);
         node.componentId = newComponentId;
         level = msg.level;
+        // check old tests
+        processOldTestRequests();
         // forward update to children
         for(Link child: node.children) {
             outboundMessages.get(child).add(msg);
@@ -401,6 +406,8 @@ public class SyncGHSThread extends Thread {
 
         Message response = null;
         while(response == null) {
+            if(DEBUG)
+                print(String.format("Test waiting on %s", link.destinationId));
             if(testResponses.containsKey(link)){
                 response = testResponses.remove(link);
             }
@@ -430,7 +437,11 @@ public class SyncGHSThread extends Thread {
         Link bestCandidate;
         if(node.children.size() > 0 && mwoeResponses.size() > 0) {
             Link childCandidate = Collections.min(mwoeResponses.values());
-            bestCandidate = childCandidate.compareTo(localCandidate) < 0 ? childCandidate : localCandidate;
+            if(localCandidate == null) {
+                bestCandidate = childCandidate;
+            } else {
+                bestCandidate = childCandidate.compareTo(localCandidate) < 0 ? childCandidate : localCandidate;
+            }
         } else {
             bestCandidate = localCandidate;
         }
@@ -450,20 +461,15 @@ public class SyncGHSThread extends Thread {
             // other node is new leader
             newComponentID = link.destinationId;
             newParent = link;
-            if(levelMap.get(link) == level) {
-                newLevel = level + 1;
-            } else {
-                newLevel = levelMap.get(link);
-            }
         } else  {
             // this node is new leader
             newComponentID = node.ID;
             newParent = null;
-            if(levelMap.get(link) == level) {
-                newLevel = level + 1;
-            } else {
-                newLevel = level;
-            }
+        }
+        if(levelMap.get(link).equals(level)) {
+            newLevel = level + 1;
+        } else {
+            newLevel = Math.max(levelMap.get(link), level);
         }
         if(!wasLeader)
             node.children.add(node.parent);
