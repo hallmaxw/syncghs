@@ -19,7 +19,7 @@ public class Main {
     	dsSource.readThreadIds(inputPath);
         // phaser is used to manage rounds
     	Phaser phaser = new Phaser(dsSource.getNumThreads());
-        Map<String,SyncGHSThread> threads = new HashMap<String,SyncGHSThread>();
+        Map<String,SyncGHSThread> threads = new HashMap<>();
         
         for(int i = 0; i < dsSource.getNumThreads(); i++) {
             threads.put(dsSource.getThreadIds()[i],new SyncGHSThread(dsSource.getThreadIds()[i], phaser));

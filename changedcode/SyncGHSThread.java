@@ -11,10 +11,8 @@ import java.util.concurrent.Phaser;
 
 public class SyncGHSThread extends Thread {
     static public final boolean DEBUG = false;
-    private String leaderID; // not sure if we need this
 	private Phaser phaser;
     private Node node;
-	private State state;
 	private int round;
 	private int requestedTerminationCount;
 	private int terminatedCount;
@@ -32,20 +30,18 @@ public class SyncGHSThread extends Thread {
 
 	public SyncGHSThread(String id, Phaser phaser) {
 		this.phaser = phaser;
-		this.leaderID = id;
-		this.state = State.Initialization;
         node = new Node(id, id);
 		round = 1;
 		requestedTerminationCount = 0;
 		terminatedCount = 0;
 		this.level = 0;
-        mwoeResponses = new HashMap<Link, Link>();
-        outboundMessages = new HashMap<Link, Queue<Message>>();
-        testResponses = new HashMap<Link, Message>();
-        testRequests = new HashMap<Link, Message>();
+        mwoeResponses = new HashMap<>();
+        outboundMessages = new HashMap<>();
+        testResponses = new HashMap<>();
+        testRequests = new HashMap<>();
         mwoeInitReceived = false;
-        connectEdges = new ArrayList<Link>();
-        componentUpdateResponses = new HashMap<Link, Boolean>();
+        connectEdges = new ArrayList<>();
+        componentUpdateResponses = new HashMap<>();
         terminate = false;
         connectEdgesUpdates = 0;
         mergeFinished = false;
@@ -127,11 +123,7 @@ public class SyncGHSThread extends Thread {
             // respond immediately
             String reqComponent  = (String) msg.data;
             Message responseMsg = new Message(Message.MessageType.TestResponse);
-            if(reqComponent.equals(node.componentId)) {
-                responseMsg.data = false;
-            } else {
-                responseMsg.data = true;
-            }
+            responseMsg.data = !reqComponent.equals(node.componentId);
             outboundMessages.get(link).add(responseMsg);
         }
     }
@@ -283,7 +275,7 @@ public class SyncGHSThread extends Thread {
     private void processUpdateQueue(Link link, Message msg) {
         if(node.parent == null) {
             if(connectEdges == null) {
-                connectEdges = new ArrayList<Link>();
+                connectEdges = new ArrayList<>();
             }
             List<Link> oldEdges = (ArrayList<Link>) msg.data;
             connectEdges.addAll(oldEdges);
@@ -366,7 +358,7 @@ public class SyncGHSThread extends Thread {
             }
         }
 
-        Link bestCandidate = null;
+        Link bestCandidate;
         if(node.children.size() > 0 && mwoeResponses.size() > 0) {
             Link childCandidate = Collections.min(mwoeResponses.values());
             if(childCandidate == null) {
@@ -388,8 +380,8 @@ public class SyncGHSThread extends Thread {
 
 	public void connect(Link link) {
         boolean wasParent = node.parent == null;
-        String newComponentID = "";
-        Link newParent = null;
+        String newComponentID;
+        Link newParent;
         if(link.destinationId.compareTo(node.ID) < 1) {
             // other node is leader
             newComponentID = link.destinationId;
@@ -613,12 +605,8 @@ public class SyncGHSThread extends Thread {
 	}
 
 	public void addLink(Link link) {
-        outboundMessages.put(link, new LinkedList<Message>());
+        outboundMessages.put(link, new LinkedList<>());
 		node.addLink(link);
-	}
-
-	enum State {
-		Connect, Initialization, SendMessages, ProcessMessages, End, Find , Found 
 	}
 
 	public String toString() {

@@ -22,10 +22,10 @@ public class Node {
         this.ID = ID;
         this.componentId = componentId;
         parent = null;
-        children = new ArrayList<Link>();
-        potentialLinks = new ArrayList<Link>();
-        rejectedLinks = new ArrayList<Link>();
-        allLinks = new ArrayList<Link>();
+        children = new ArrayList<>();
+        potentialLinks = new ArrayList<>();
+        rejectedLinks = new ArrayList<>();
+        allLinks = new ArrayList<>();
     }
 
     public void addLink(Link link) {

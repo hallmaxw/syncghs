@@ -22,8 +22,8 @@ public class Link implements Comparable {
         this.sourceId = sourceId;
 		this.weight = weight;
         state = State.Basic;
-		inboundMessages = Collections.synchronizedList(new ArrayList<Message>());
-		outboundMessages = Collections.synchronizedList(new ArrayList<Message>());
+		inboundMessages = Collections.synchronizedList(new ArrayList<>());
+		outboundMessages = Collections.synchronizedList(new ArrayList<>());
 	}
 	
 	/*
@@ -46,17 +46,8 @@ public class Link implements Comparable {
 		outboundMessages.add(msg);
 	}
 
-	public Message peekMessage() {
-		return inboundMessages.get(0);
-	}
-
-	public Message getMessage() {
-		return inboundMessages.remove(0);
-	}
-
-	public static Link GetReverseLink(Link link, String destinationId) {
-		Link reverseLink = new Link(link.outboundMessages, link.inboundMessages, link.sourceId, link.destinationId, link.weight);
-		return reverseLink;
+	public static Link GetReverseLink(Link link) {
+		return new Link(link.outboundMessages, link.inboundMessages, link.sourceId, link.destinationId, link.weight);
 	}
 	
 	enum State {

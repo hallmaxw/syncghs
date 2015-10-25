@@ -10,11 +10,6 @@ public class Message {
     MessageType type;
     Object data;
     int level;
-
-
-    public Message() {
-    	
-    }
     
     public Message(MessageType type) {
         this.type = type;

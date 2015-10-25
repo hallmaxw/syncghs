@@ -57,7 +57,7 @@ public class DataSource {
                         Link link = new Link(threadIds[destinationIndex],threadIds[sourceIndex], weight);
                         threads.get(threadIds[sourceIndex]).addLink(link);
                         threads.get(threadIds[destinationIndex])
-                                .addLink(Link.GetReverseLink(link, threadIds[sourceIndex]));
+                                .addLink(Link.GetReverseLink(link));
 
                     }
                 }
