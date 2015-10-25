@@ -47,18 +47,32 @@ public class SyncGHSThread extends Thread {
         mergeFinished = false;
 	}
 
+    /*
+        Broadcast a message to all adjacent nodes
+     */
 	public void broadcastMessage(Message msg) {
 		for (Link link : node.allLinks) {
 			link.sendMessage(msg);
 		}
 	}
 
+    /*
+        Broadcast a message to children only
+     */
     private void broadcastToChildren(Message msg) {
         for (Link link : node.children) {
             link.sendMessage(msg);
         }
     }
 
+    /*
+        processMessages is always executed before the end of every round.
+        If some data needs to be stored from processed messages, it should be
+        contained in an instance variable.
+
+        Messages can be stored in outBoundMessages to be sent at the beginning
+        of the next round.
+     */
 	public void processMessages() {
 		int roundTerminatedCount = 0;
 		while (roundTerminatedCount < node.allLinks.size() - terminatedCount) {
@@ -129,16 +143,21 @@ public class SyncGHSThread extends Thread {
     }
 
     private void processTestResponse(Link link, Message msg) {
+        // test responses need to be acted on later
         testResponses.put(link, msg);
     }
 
     private void processMWOEResponse(Link link, Message msg) {
+        // mwoe responses need to be acted on later
         Link data = (Link) msg.data;
         mwoeResponses.put(link, data);
     }
 
     /*
-        tell children to merge on the provided edge
+        Process a ConnectInit message
+
+        If edge is adjacent, update its state.
+        Else, broadcast connect to children
      */
     private void processConnectInit(Link link, Message msg) {
         Link mwoe = (Link) msg.data;
@@ -166,7 +185,11 @@ public class SyncGHSThread extends Thread {
     }
 
     /*
+        Process a ConnectRequest message
 
+        Update the state of the link
+        If this is the local leader, add to the connect queue.
+        Else, send a ConnectForward message up to the parent
      */
     private void processConnectRequest(Link link, Message msg) {
         switch(link.state) {
@@ -190,7 +213,10 @@ public class SyncGHSThread extends Thread {
     }
 
     /*
-        Forward the connect to the leader
+       Process a ConnectForward message
+
+       If this is the local leader, add to connect queue.
+       Else, forward the message to the parent
      */
     private void processConnectForward(Link link, Message msg) {
         if (node.parent == null) {
@@ -201,6 +227,14 @@ public class SyncGHSThread extends Thread {
         }
     }
 
+    /*
+        Process a ConnectResponse
+
+        Update the state of the link
+
+        A connect response is only received if this node has
+        sent a ConnectRequest. The only state the link should be in is Connect.
+     */
     private void processConnectResponse(Link link, Message msg) {
         switch(link.state) {
             case Basic:
@@ -218,33 +252,40 @@ public class SyncGHSThread extends Thread {
     private void processComponentUpdate(Link link, Message msg) {
         String newComponentId = (String) msg.data;
         if(node.parent == null) {
+            // send this node's connect queue to the new leader
             Message queueMsg = new Message(Message.MessageType.UpdateQueue);
             queueMsg.data = connectEdges;
+            outboundMessages.get(link).add(queueMsg);
             // reset connectEdges
             connectEdges = null;
             if(DEBUG) {
                 print(String.format("From %s\n", link.destinationId));
                 print("Set connectEdges to null");
             }
-            outboundMessages.get(link).add(queueMsg);
         }
 
-        // forward to all adjacent nodes
+        // update local topology
         if(node.parent != null) {
             node.children.add(node.parent);
         }
         node.parent = link;
         node.children.remove(node.parent);
+        node.componentId = newComponentId;
+        // forward update to children
         for(Link child: node.children) {
             outboundMessages.get(child).add(msg);
         }
         if(DEBUG)
             print(String.format("CHILDREN: %s", node.children));
-        // update this node
-        node.componentId = newComponentId;
+
+        /*
+            Some nodes are waiting for a merge to finish.
+            Update the flag to notify this node that a merge has finished
+         */
         mergeFinished = true;
+
+        // If this node is a leaf, send ChildUpdateAck to parent
         if(node.children.size() == 0) {
-            // this is a leaf
             Message ack = new Message(Message.MessageType.ChildUpdateAck);
             outboundMessages.get(node.parent).add(ack);
         }
@@ -257,6 +298,7 @@ public class SyncGHSThread extends Thread {
             print(String.format("PARENT: %s", node.parent));
         }
         componentUpdateResponses.put(link, true);
+        // Once all of our children have sent us an ACK, send our parent an ACK
         if(componentUpdateResponses.size() == node.children.size()) {
             if(node.parent != null) {
                 if(DEBUG)
@@ -274,13 +316,17 @@ public class SyncGHSThread extends Thread {
 
     private void processUpdateQueue(Link link, Message msg) {
         if(node.parent == null) {
+            // local leader
             if(connectEdges == null) {
                 connectEdges = new ArrayList<>();
             }
+            // merge the old leader's connect queue into mine
             List<Link> oldEdges = (ArrayList<Link>) msg.data;
             connectEdges.addAll(oldEdges);
             connectEdgesUpdates++;
         } else {
+            // intermediate node
+            // forward the update to my parent
             node.parent.sendMessage(msg);
         }
     }
@@ -297,7 +343,7 @@ public class SyncGHSThread extends Thread {
 	}
 
 	/*
-	 * Get the minimum weight associated with the node
+	 * Get the local minimum weight outgoing edge
 	 */
 	public Link findLocalMinEdge() {
         Iterator<Link> iter = node.potentialLinks.iterator();
@@ -351,21 +397,13 @@ public class SyncGHSThread extends Thread {
             waitForRound();
         }
 
-        for(Iterator<Map.Entry<Link, Link>> it = mwoeResponses.entrySet().iterator(); it.hasNext();) {
-            Map.Entry<Link, Link> entry = it.next();
-            if(entry.getValue() == null) {
-                it.remove();
-            }
-        }
+        // remove null mwoe responses (no mwoe found)
+        mwoeResponses.entrySet().removeIf(entry -> entry.getValue() == null);
 
         Link bestCandidate;
         if(node.children.size() > 0 && mwoeResponses.size() > 0) {
             Link childCandidate = Collections.min(mwoeResponses.values());
-            if(childCandidate == null) {
-                bestCandidate = localCandidate;
-            } else {
-                bestCandidate = childCandidate.compareTo(localCandidate) < 0 ? childCandidate : localCandidate;
-            }
+            bestCandidate = childCandidate.compareTo(localCandidate) < 0 ? childCandidate : localCandidate;
         } else {
             bestCandidate = localCandidate;
         }
@@ -373,36 +411,36 @@ public class SyncGHSThread extends Thread {
     }
 
 	/*
-	 * (non-Javadoc)
-	 * Attempts to merge two trees
-	 * @see java.lang.Thread#run()
+	 * Connects two components
+	 *
 	 */
-
 	public void connect(Link link) {
-        boolean wasParent = node.parent == null;
+        boolean wasLeader = node.parent == null;
         String newComponentID;
         Link newParent;
         if(link.destinationId.compareTo(node.ID) < 1) {
-            // other node is leader
+            // other node is new leader
             newComponentID = link.destinationId;
             newParent = link;
         } else  {
-            // this node is leader
+            // this node is new leader
             newComponentID = node.ID;
             newParent = null;
         }
-        if(node.parent != null)
+        if(!wasLeader)
             node.children.add(node.parent);
         // send update to children
         Message msg = new Message(Message.MessageType.ComponentUpdate, newComponentID);
+        broadcastToChildren(msg);
         if(DEBUG) {
             print(String.format("Connecting to  %s", link.destinationId));
             print(String.format("CHILDREN: %s", node.children));
         }
-        broadcastToChildren(msg);
 
-
-        // add the new link as a child
+        /*
+            If this is the new leader,
+            add the new link as a child
+         */
         if(newParent == null) {
             node.children.add(link);
         }
@@ -413,13 +451,8 @@ public class SyncGHSThread extends Thread {
         while(componentUpdateResponses.size() < node.children.size() - diff) {
             waitForRound();
         }
-        node.parent = newParent;
-        node.componentId = newComponentID;
-        componentUpdateResponses.clear();
+
         int updatesRequired = 0;
-        if(!wasParent) {
-            updatesRequired++;
-        }
         if(newParent == null) {
             updatesRequired++;
         } else {
@@ -428,12 +461,21 @@ public class SyncGHSThread extends Thread {
             link.sendMessage(queueMsg);
             connectEdges = null;
         }
+
+        node.parent = newParent;
+        node.componentId = newComponentID;
+        componentUpdateResponses.clear();
+        if(!wasLeader) {
+            updatesRequired++;
+        }
+
         // wait for connect edges to update
         while (connectEdgesUpdates < updatesRequired) {
             waitForRound();
         }
         connectEdgesUpdates = 0;
         if(connectEdges != null) {
+            // remove the added link from the connect queue
             Iterator<Link> iter = connectEdges.iterator();
             while(iter.hasNext()) {
                 Link edge = iter.next();
