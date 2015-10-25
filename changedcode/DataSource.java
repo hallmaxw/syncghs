@@ -3,10 +3,14 @@ import java.io.FileReader;
 import java.util.Map;
 import java.util.Scanner;
 
-/*
- * created by : Prashant Prakash
- * created date : 17th oct 2015 
- * Description : To read input data from different data sources
+/**
+ * Synch GHS Algorithm
+ * Group Members:
+ * Maxwell Hall
+ * Prashant Prakash
+ * Shashank Adidamu
+ *
+ *  Used to read input data
  */
 public class DataSource {
 
@@ -49,7 +53,7 @@ public class DataSource {
                         continue;
                     if(destinationIndex == sourceIndex)
                         continue;
-                    if (weight != Constant.NEGONE) {
+                    if (weight != -1) {
                         Link link = new Link(threadIds[destinationIndex],threadIds[sourceIndex], weight);
                         threads.get(threadIds[sourceIndex]).addLink(link);
                         threads.get(threadIds[destinationIndex])

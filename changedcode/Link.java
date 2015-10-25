@@ -1,19 +1,12 @@
 /**
- * Created by maxwell on 10/10/15.
- *
- * Each node says hello to their neighbors.
- * The topology is hard coded to the following:
- *
- *       1-----2-----3
- *       |     |     |
- *       |     |     |
- *       |     |     |
- *       4-----5-----/
- *
+ * Synch GHS Algorithm
+ * Group Members:
+ * Maxwell Hall
+ * Prashant Prakash
+ * Shashank Adidamu
  */
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 public class Link implements Comparable {

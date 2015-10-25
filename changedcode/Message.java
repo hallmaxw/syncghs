@@ -1,13 +1,16 @@
 /**
- * Created by maxwell on 10/10/15.
+ * Synch GHS Algorithm
+ * Group Members:
+ * Maxwell Hall
+ * Prashant Prakash
+ * Shashank Adidamu
  */
+
 public class Message {
     MessageType type;
     Object data;
     int level;
-    double weight;
-    State state;
-    String id;
+
 
     public Message() {
     	
@@ -24,7 +27,6 @@ public class Message {
     }
 
     enum MessageType {
-        TextMessage,
         MWOEInit,
         MWOEResponse,
         ConnectInit, // data is the Link to merge on
@@ -37,18 +39,7 @@ public class Message {
         RoundTermination,
         AlgoTerminationRequest,
         AlgoTermination,
-        Connect,
-        Initiate,
         TestRequest, // data is component ID (string)
-        TestResponse, // data is a boolean
-        Reject,
-        Accept,
-        ReportMessage,
-        ChangeRootMessage
+        TestResponse // data is a boolean
     }
-    
-    enum State {
-    	Find , Found 
-    }
-
 }

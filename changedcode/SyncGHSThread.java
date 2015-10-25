@@ -1,13 +1,16 @@
 /**
- * Created by maxwell on 10/10/15.
+ * Synch GHS Algorithm
+ * Group Members:
+ * Maxwell Hall
+ * Prashant Prakash
+ * Shashank Adidamu
  */
-import java.nio.file.LinkOption;
+
 import java.util.*;
 import java.util.concurrent.Phaser;
-import java.util.concurrent.SynchronousQueue;
 
 public class SyncGHSThread extends Thread {
-    static private final boolean DEBUG = true;
+    static public final boolean DEBUG = false;
     private String leaderID; // not sure if we need this
 	private Phaser phaser;
     private Node node;
@@ -292,7 +295,8 @@ public class SyncGHSThread extends Thread {
 
 	public void end() {
         broadcastMessage(new Message(Message.MessageType.AlgoTermination));
-        print(String.format("%s\n", node));
+        if(DEBUG)
+            print(String.format("%s\n", node));
 		phaser.arriveAndDeregister();
 	}
 
@@ -573,7 +577,21 @@ public class SyncGHSThread extends Thread {
         while(requestedTerminationCount != node.allLinks.size()) {
             waitForRound();
         }
+        printAdjacencyList();
         end();
+    }
+
+    private void printAdjacencyList() {
+        StringBuilder builder = new StringBuilder();
+        builder.append(String.format("%s adjacent to ", node.ID));
+        node.children.forEach(child -> {
+            builder.append(child.destinationId);
+            builder.append(" ");
+        });
+        if(node.parent != null) {
+            builder.append(node.parent.destinationId);
+        }
+        System.out.println(builder.toString());
     }
 
 	public void waitForRound() {
@@ -589,12 +607,6 @@ public class SyncGHSThread extends Thread {
                     link.sendMessage(messages.poll());
                 }
             }
-//            StringBuilder stack = new StringBuilder();
-//            for(StackTraceElement trace: getStackTrace()) {
-//                stack.append(trace.toString());
-//                stack.append("\n");
-//            }
-//            print(stack.toString());
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

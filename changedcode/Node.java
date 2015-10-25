@@ -1,10 +1,14 @@
 import java.util.ArrayList;
 import java.util.List;
 
-/*
- * created by : Prashant Prakash
- * created_date : 14th oct 2015 
+/**
+ * Synch GHS Algorithm
+ * Group Members:
+ * Maxwell Hall
+ * Prashant Prakash
+ * Shashank Adidamu
  */
+
 public class Node {
     public String ID;
     public String componentId;
