@@ -61,7 +61,8 @@ public class DataSource {
 
                     }
                 }
-				inputScanner.nextLine();
+                if(sourceIndex != threads.size()-1)
+				    inputScanner.nextLine();
 			}
 
 		} catch (Exception ex) {
