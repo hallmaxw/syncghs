@@ -188,6 +188,7 @@ public class SyncGHSThread extends Thread {
                 print("Something weird happened");
                 break;
         }
+        print(String.format("CONNECT REQUEST FROM %s", link.destinationId));
         // if leader, add to list
         if (node.parent == null) {
             connectEdges.add(link);
@@ -202,7 +203,8 @@ public class SyncGHSThread extends Thread {
      */
     private void processConnectForward(Link link, Message msg) {
         if (node.parent == null) {
-            connectEdges.add(link);
+            Link data = (Link) msg.data;
+            connectEdges.add(data);
         } else {
             node.parent.sendMessage(msg);
         }
@@ -224,7 +226,7 @@ public class SyncGHSThread extends Thread {
 
     private void processComponentUpdate(Link link, Message msg) {
         String newComponentId = (String) msg.data;
-        if(!node.componentId.equals(newComponentId)) {
+        print(String.format("Update to %s current: %s", newComponentId, node.componentId));
             if(node.parent == null) {
                 Message queueMsg = new Message(Message.MessageType.UpdateQueue);
                 queueMsg.data = connectEdges;
@@ -247,23 +249,21 @@ public class SyncGHSThread extends Thread {
             print(String.format("CHILDREN: %s", node.children));
             // update this node
             node.componentId = newComponentId;
-
+            mergeFinished = true;
             if(node.children.size() == 0) {
                 // this is a leaf
                 Message ack = new Message(Message.MessageType.ChildUpdateAck);
                 outboundMessages.get(node.parent).add(ack);
             }
-        }
+
     }
 
     private void processChildUpdateAck(Link link, Message msg) {
         print(String.format("Received update ACK from %s", link.destinationId));
         componentUpdateResponses.put(link, true);
-        print(String.format("UpdateResponses: %d", componentUpdateResponses.size()));
         print(String.format("PARENT: %s", node.parent));
         if(componentUpdateResponses.size() == node.children.size()) {
             if(node.parent != null) {
-                mergeFinished = true;
                 print(String.format("Forward ACK to %s", node.parent.destinationId));
                 outboundMessages.get(node.parent).add(msg);
                 componentUpdateResponses.clear();
@@ -272,9 +272,7 @@ public class SyncGHSThread extends Thread {
     }
 
     private void processAlgoTerminationRequest(Link link, Message msg) {
-        for(Link child : node.children) {
-            outboundMessages.get(child).add(msg);
-        }
+        requestedTerminationCount++;
         terminate = true;
     }
 
@@ -347,6 +345,7 @@ public class SyncGHSThread extends Thread {
     public Link findMWOE() {
         mwoeResponses.clear();
         // tell children to find mwoe
+        //print(String.format("MWOE Children: %s", node.children));
         for(Link link: node.children) {
             link.sendMessage(new Message(Message.MessageType.MWOEInit));
         }
@@ -354,13 +353,25 @@ public class SyncGHSThread extends Thread {
         Link localCandidate = findLocalMinEdge();
         // wait for children to respond
         while(mwoeResponses.size() != node.children.size()) {
-            print(String.format("MWOE_WAIT GOAL: %d STATUS: %d", node.children.size(), mwoeResponses.size()));
+            //print(String.format("MWOE_WAIT GOAL: %d STATUS: %d", node.children.size(), mwoeResponses.size()));
             waitForRound();
         }
+
+        for(Iterator<Map.Entry<Link, Link>> it = mwoeResponses.entrySet().iterator(); it.hasNext();) {
+            Map.Entry<Link, Link> entry = it.next();
+            if(entry.getValue() == null) {
+                it.remove();
+            }
+        }
+
         Link bestCandidate = null;
-        if(node.children.size() > 0) {
+        if(node.children.size() > 0 && mwoeResponses.size() > 0) {
             Link childCandidate = Collections.min(mwoeResponses.values());
-            bestCandidate = childCandidate.compareTo(localCandidate) < 0 ? childCandidate : localCandidate;
+            if(childCandidate == null) {
+                bestCandidate = localCandidate;
+            } else {
+                bestCandidate = childCandidate.compareTo(localCandidate) < 0 ? childCandidate : localCandidate;
+            }
         } else {
             bestCandidate = localCandidate;
         }
@@ -407,6 +418,7 @@ public class SyncGHSThread extends Thread {
             waitForRound();
         }
         node.parent = newParent;
+        node.componentId = newComponentID;
         componentUpdateResponses.clear();
         int updatesRequired = 0;
         if(!wasParent) {
@@ -425,7 +437,16 @@ public class SyncGHSThread extends Thread {
             waitForRound();
         }
         connectEdgesUpdates = 0;
-
+        if(connectEdges != null) {
+            Iterator<Link> iter = connectEdges.iterator();
+            while(iter.hasNext()) {
+                Link edge = iter.next();
+                if(edge.sourceId.equals(link.sourceId) && edge.destinationId.equals(link.destinationId))
+                    iter.remove();
+                else if(edge.sourceId.equals(link.destinationId) && edge.destinationId.equals(link.sourceId))
+                    iter.remove();
+            }
+        }
         print(String.format("Connected on %s\n", link));
 	}
 
@@ -448,13 +469,13 @@ public class SyncGHSThread extends Thread {
 
 	public void run() {
         Collections.sort(node.potentialLinks);
-        while(true) {
-            print(String.format("PARENT: %s", node.parent));
+        while(!terminate) {
             if(node.parent == null) {
+                mergeFinished = false;
+                print("finding mwoe");
                 Link mwoe = findMWOE();
-                print("I've FOUND THE MWOE MWAHAHA");
                 if(mwoe == null) {
-                    print("ANSWER ACHIEVED YAYAYYAY");
+                    print("IT's A MIRACLE");
                     break;
                 }
                 // check if mwoe is local edge
@@ -463,7 +484,7 @@ public class SyncGHSThread extends Thread {
                     while (mwoe.state != Link.State.Connected) {
                         waitForRound();
                     }
-                    connectEdges.remove(mwoe);
+                    //connectEdges.remove(mwoe);
                     connect(mwoe);
                     node.potentialLinks.remove(mwoe);
                     if (connectEdges != null)
@@ -472,23 +493,25 @@ public class SyncGHSThread extends Thread {
                     // broadcast request to children
                     Message connectInit = new Message(Message.MessageType.ConnectInit, mwoe);
                     broadcastToChildren(connectInit);
-                    print(String.format("BroadCasting connect to %s", mwoe));
+                    print(String.format("BroadCasting mwoe connect to %s", mwoe));
+                    //connectEdges.remove(mwoe);
                     // wait until merge is complete
                     while (!mergeFinished) {
                         waitForRound();
                     }
-
+                    mergeFinished = false;
                 }
             }
 
             while(true) {
                 while(node.parent == null && connectEdges.size() > 0) {
-                    Link mwoe = connectEdges.remove(0);
+                    Link mwoe = connectEdges.get(0);
                     if(node.allLinks.contains(mwoe)) {
                         sendConnectRequest(mwoe);
                         while(mwoe.state != Link.State.Connected) {
                             waitForRound();
                         }
+                        //connectEdges.remove(mwoe);
                         connect(mwoe);
                         node.potentialLinks.remove(mwoe);
                         print(String.format("%s\n", node));
@@ -498,15 +521,20 @@ public class SyncGHSThread extends Thread {
                         // broadcast request to children
                         Message connectInit = new Message(Message.MessageType.ConnectInit, mwoe);
                         broadcastToChildren(connectInit);
-                        print(String.format("BroadCasting connect to %s", mwoe));
+                        print(String.format("BroadCasting other connect to %s", mwoe));
+                        //connectEdges.remove(mwoe);
                         while(!mergeFinished) {
                             waitForRound();
                         }
+                        mergeFinished = false;
+                        print("Merge finished");
                     }
                 }
                 if(node.parent == null) {
                     break;
                 } else {
+                    if(terminate)
+                        break;
                     if(mwoeInitReceived) {
                         mwoeInitReceived = false;
                         Link mwoe = findMWOE();
@@ -531,6 +559,12 @@ public class SyncGHSThread extends Thread {
                 waitForRound();
             }
         }
+
+        broadcastMessage(new Message(Message.MessageType.AlgoTerminationRequest));
+        while(requestedTerminationCount != node.allLinks.size()) {
+            waitForRound();
+        }
+        end();
     }
 
 	public void waitForRound() {
@@ -546,6 +580,12 @@ public class SyncGHSThread extends Thread {
                     link.sendMessage(messages.poll());
                 }
             }
+//            StringBuilder stack = new StringBuilder();
+//            for(StackTraceElement trace: getStackTrace()) {
+//                stack.append(trace.toString());
+//                stack.append("\n");
+//            }
+//            print(stack.toString());
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
