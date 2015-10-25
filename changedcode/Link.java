@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class Link implements Comparable {
+public class Link implements Comparable<Link> {
 	public List<Message> inboundMessages;
 	public List<Message> outboundMessages;
 	public String destinationId;
@@ -59,9 +59,8 @@ public class Link implements Comparable {
         return String.format("%s - %s -> %s", sourceId, weight, destinationId);
     }
 
-    @Override
-    public int compareTo(Object o) {
-        Link oLink = (Link) o;
+
+    public int compareTo(Link oLink) {
         int cmp = Double.compare(weight, oLink.weight);
         if(cmp == 0) {
             cmp = getMinId().compareTo(oLink.getMinId());

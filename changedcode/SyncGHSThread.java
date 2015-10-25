@@ -340,6 +340,7 @@ public class SyncGHSThread extends Thread {
         terminate = true;
     }
 
+    @SuppressWarnings("unchecked")
     private void processUpdateQueue(Link link, Message msg) {
         if(node.parent == null) {
             // local leader
