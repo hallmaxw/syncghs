@@ -7,6 +7,7 @@ import java.util.concurrent.Phaser;
 import java.util.concurrent.SynchronousQueue;
 
 public class SyncGHSThread extends Thread {
+    static private final boolean DEBUG = true;
     private String leaderID; // not sure if we need this
 	private Phaser phaser;
     private Node node;
@@ -67,9 +68,6 @@ public class SyncGHSThread extends Thread {
 					while (!link.inboundMessages.isEmpty()) {
 						Message msg = link.inboundMessages.remove(0);
 						switch (msg.type) {
-						case TextMessage:
-							print(String.format("Received message:(%s) %s", msg.type.name(), msg.data));
-							break;
                         case TestRequest:
                             processTestRequest(link, msg);
                             break;
@@ -116,7 +114,6 @@ public class SyncGHSThread extends Thread {
 				}
 			}
 		}
-		//print("Processed messages");
 	}
 
     private void processTestRequest(Link link, Message msg) {
@@ -188,7 +185,6 @@ public class SyncGHSThread extends Thread {
                 print("Something weird happened");
                 break;
         }
-        print(String.format("CONNECT REQUEST FROM %s", link.destinationId));
         // if leader, add to list
         if (node.parent == null) {
             connectEdges.add(link);
@@ -226,45 +222,50 @@ public class SyncGHSThread extends Thread {
 
     private void processComponentUpdate(Link link, Message msg) {
         String newComponentId = (String) msg.data;
-        print(String.format("Update to %s current: %s", newComponentId, node.componentId));
-            if(node.parent == null) {
-                Message queueMsg = new Message(Message.MessageType.UpdateQueue);
-                queueMsg.data = connectEdges;
-                // reset connectEdges
-                connectEdges = null;
+        if(node.parent == null) {
+            Message queueMsg = new Message(Message.MessageType.UpdateQueue);
+            queueMsg.data = connectEdges;
+            // reset connectEdges
+            connectEdges = null;
+            if(DEBUG) {
                 print(String.format("From %s\n", link.destinationId));
                 print("Set connectEdges to null");
-                outboundMessages.get(link).add(queueMsg);
             }
+            outboundMessages.get(link).add(queueMsg);
+        }
 
-            // forward to all adjacent nodes
-            if(node.parent != null) {
-                node.children.add(node.parent);
-            }
-            node.parent = link;
-            node.children.remove(node.parent);
-            for(Link child: node.children) {
-                outboundMessages.get(child).add(msg);
-            }
+        // forward to all adjacent nodes
+        if(node.parent != null) {
+            node.children.add(node.parent);
+        }
+        node.parent = link;
+        node.children.remove(node.parent);
+        for(Link child: node.children) {
+            outboundMessages.get(child).add(msg);
+        }
+        if(DEBUG)
             print(String.format("CHILDREN: %s", node.children));
-            // update this node
-            node.componentId = newComponentId;
-            mergeFinished = true;
-            if(node.children.size() == 0) {
-                // this is a leaf
-                Message ack = new Message(Message.MessageType.ChildUpdateAck);
-                outboundMessages.get(node.parent).add(ack);
-            }
+        // update this node
+        node.componentId = newComponentId;
+        mergeFinished = true;
+        if(node.children.size() == 0) {
+            // this is a leaf
+            Message ack = new Message(Message.MessageType.ChildUpdateAck);
+            outboundMessages.get(node.parent).add(ack);
+        }
 
     }
 
     private void processChildUpdateAck(Link link, Message msg) {
-        print(String.format("Received update ACK from %s", link.destinationId));
+        if(DEBUG) {
+            print(String.format("Received update ACK from %s", link.destinationId));
+            print(String.format("PARENT: %s", node.parent));
+        }
         componentUpdateResponses.put(link, true);
-        print(String.format("PARENT: %s", node.parent));
         if(componentUpdateResponses.size() == node.children.size()) {
             if(node.parent != null) {
-                print(String.format("Forward ACK to %s", node.parent.destinationId));
+                if(DEBUG)
+                    print(String.format("Forward ACK to %s", node.parent.destinationId));
                 outboundMessages.get(node.parent).add(msg);
                 componentUpdateResponses.clear();
             }
@@ -291,7 +292,6 @@ public class SyncGHSThread extends Thread {
 
 	public void end() {
         broadcastMessage(new Message(Message.MessageType.AlgoTermination));
-		print("Finished");
         print(String.format("%s\n", node));
 		phaser.arriveAndDeregister();
 	}
@@ -345,7 +345,6 @@ public class SyncGHSThread extends Thread {
     public Link findMWOE() {
         mwoeResponses.clear();
         // tell children to find mwoe
-        //print(String.format("MWOE Children: %s", node.children));
         for(Link link: node.children) {
             link.sendMessage(new Message(Message.MessageType.MWOEInit));
         }
@@ -353,7 +352,6 @@ public class SyncGHSThread extends Thread {
         Link localCandidate = findLocalMinEdge();
         // wait for children to respond
         while(mwoeResponses.size() != node.children.size()) {
-            //print(String.format("MWOE_WAIT GOAL: %d STATUS: %d", node.children.size(), mwoeResponses.size()));
             waitForRound();
         }
 
@@ -401,9 +399,12 @@ public class SyncGHSThread extends Thread {
             node.children.add(node.parent);
         // send update to children
         Message msg = new Message(Message.MessageType.ComponentUpdate, newComponentID);
-        print(String.format("Connecting to  %s", link.destinationId));
+        if(DEBUG) {
+            print(String.format("Connecting to  %s", link.destinationId));
+            print(String.format("CHILDREN: %s", node.children));
+        }
         broadcastToChildren(msg);
-        print(String.format("CHILDREN: %s", node.children));
+
 
         // add the new link as a child
         if(newParent == null) {
@@ -414,7 +415,6 @@ public class SyncGHSThread extends Thread {
         int diff = newParent == null ? 1 : 0;
         // wait for children to ack
         while(componentUpdateResponses.size() < node.children.size() - diff) {
-            print(String.format("waiting for children GOAL: %d STATUS: %d", node.children.size()-diff, componentUpdateResponses.size()));
             waitForRound();
         }
         node.parent = newParent;
@@ -447,7 +447,8 @@ public class SyncGHSThread extends Thread {
                     iter.remove();
             }
         }
-        print(String.format("Connected on %s\n", link));
+        if(DEBUG)
+            print(String.format("Connected on %s\n", link));
 	}
 
 
@@ -472,10 +473,11 @@ public class SyncGHSThread extends Thread {
         while(!terminate) {
             if(node.parent == null) {
                 mergeFinished = false;
-                print("finding mwoe");
+                if(DEBUG){
+                    print("finding mwoe");
+                }
                 Link mwoe = findMWOE();
                 if(mwoe == null) {
-                    print("IT's A MIRACLE");
                     break;
                 }
                 // check if mwoe is local edge
@@ -488,12 +490,14 @@ public class SyncGHSThread extends Thread {
                     connect(mwoe);
                     node.potentialLinks.remove(mwoe);
                     if (connectEdges != null)
-                        print(String.format("EDGES: %s", connectEdges));
+                        if(DEBUG)
+                            print(String.format("EDGES: %s", connectEdges));
                 } else {
                     // broadcast request to children
                     Message connectInit = new Message(Message.MessageType.ConnectInit, mwoe);
                     broadcastToChildren(connectInit);
-                    print(String.format("BroadCasting mwoe connect to %s", mwoe));
+                    if(DEBUG)
+                        print(String.format("BroadCasting mwoe connect to %s", mwoe));
                     //connectEdges.remove(mwoe);
                     // wait until merge is complete
                     while (!mergeFinished) {
@@ -514,20 +518,24 @@ public class SyncGHSThread extends Thread {
                         //connectEdges.remove(mwoe);
                         connect(mwoe);
                         node.potentialLinks.remove(mwoe);
-                        print(String.format("%s\n", node));
+                        if(DEBUG)
+                            print(String.format("%s\n", node));
                         if(connectEdges != null)
-                            print(String.format("EDGES: %s", connectEdges));
+                            if(DEBUG)
+                                print(String.format("EDGES: %s", connectEdges));
                     } else {
                         // broadcast request to children
                         Message connectInit = new Message(Message.MessageType.ConnectInit, mwoe);
                         broadcastToChildren(connectInit);
-                        print(String.format("BroadCasting other connect to %s", mwoe));
+                        if(DEBUG)
+                            print(String.format("BroadCasting other connect to %s", mwoe));
                         //connectEdges.remove(mwoe);
                         while(!mergeFinished) {
                             waitForRound();
                         }
                         mergeFinished = false;
-                        print("Merge finished");
+                        if(DEBUG)
+                            print("Merge finished");
                     }
                 }
                 if(node.parent == null) {
@@ -551,7 +559,8 @@ public class SyncGHSThread extends Thread {
                         if(link.state == Link.State.Connected) {
                             connect(link);
                             if(connectEdges != null)
-                                print(String.format("EDGES: %s", connectEdges));
+                                if(DEBUG)
+                                    print(String.format("EDGES: %s", connectEdges));
                             iter.remove();
                         }
                     }
