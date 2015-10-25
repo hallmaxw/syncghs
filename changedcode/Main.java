@@ -13,8 +13,7 @@ import java.util.concurrent.Phaser;
 public class Main {
 
     public static void main(String[] args) {
-        //String inputPath = "D:\\git\\HackerRankCodes\\SynchGHS\\src\\input.txt";
-    	String inputPath = "/Users/maxwell/syncghs/input-file.txt";
+    	String inputPath = args[0];
     	DataSource dsSource = new DataSource();
     	dsSource.readThreadIds(inputPath);
         // phaser is used to manage rounds
