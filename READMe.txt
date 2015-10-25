@@ -5,14 +5,18 @@
 #	Purpose -> Group Project 1					#
 # 												#
 #	No of Java Files ->6 						#
+#												#
+#	Group Members: 1.Maxwell Hall 				#
+#  				   2.Prashant Prakash			#
+#				   3. Shahshank Adidamu			#
 #												#	
 #################################################
 
 Steps to Run the program 
 1. unzip the folder containing code 
-	unizip folder_name.zip
+	unizip synchghs.zip
 2. Change to directory folder_name
-cd folder_name 
+cd synchghs 
 3. Compile all java Files 
 javac *.java
 // running Main.java
