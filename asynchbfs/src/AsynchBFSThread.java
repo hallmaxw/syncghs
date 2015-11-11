@@ -18,6 +18,7 @@ public class AsynchBFSThread extends Thread {
 	private int terminatedCount;
     private Map<Link, Message> testResponses;
     private Map<Link, Queue<Message>> outboundMessages;
+    private List<Predicate<AsynchBFSThread>> pendingFunctions;
     private boolean terminate;
 
 	public AsynchBFSThread(String id, Phaser phaser) {
