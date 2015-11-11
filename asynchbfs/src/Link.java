@@ -15,8 +15,7 @@ public class Link implements Comparable<Link> {
 	public String destinationId;
     public String sourceId;
 	public double weight;
-	public State state ;
-
+	
 	public Link(String destinationId, String sourceId, double weight) {
 		this.destinationId = destinationId;
         this.sourceId = sourceId;
@@ -50,9 +49,6 @@ public class Link implements Comparable<Link> {
 		return new Link(link.outboundMessages, link.inboundMessages, link.sourceId, link.destinationId, link.weight);
 	}
 	
-	enum State {
-        Basic, Connect, Connected
-    }
 
     @Override
     public String toString() {

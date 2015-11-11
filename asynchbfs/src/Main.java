@@ -18,10 +18,10 @@ public class Main {
     	dsSource.readThreadIds(inputPath);
         // phaser is used to manage rounds
     	Phaser phaser = new Phaser(dsSource.getNumThreads());
-        Map<String,SyncGHSThread> threads = new HashMap<>();
+        Map<String,AsynchBFSThread> threads = new HashMap<>();
         
         for(int i = 0; i < dsSource.getNumThreads(); i++) {
-            threads.put(dsSource.getThreadIds()[i],new SyncGHSThread(dsSource.getThreadIds()[i], phaser));
+            threads.put(dsSource.getThreadIds()[i],new AsynchBFSThread(dsSource.getThreadIds()[i], phaser));
         }
         
         // building links with weights 
@@ -37,7 +37,7 @@ public class Main {
                 e.printStackTrace();
             }
         });
-        if(SyncGHSThread.DEBUG)
+        if(AsynchBFSThread.DEBUG)
             System.out.println("All threads finished properly");
     }
 }

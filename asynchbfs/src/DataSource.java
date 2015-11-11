@@ -36,7 +36,7 @@ public class DataSource {
 		}
 	}
 
-	public void readWeights(String inputpath, Map<String, SyncGHSThread> threads) {
+	public void readWeights(String inputpath, Map<String, AsynchBFSThread> threads) {
 		try {
 			FileReader input = new FileReader(inputpath);
 			BufferedReader br = new BufferedReader(input);
