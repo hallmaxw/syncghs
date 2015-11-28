@@ -8,6 +8,7 @@
 
 import java.util.*;
 import java.util.concurrent.Phaser;
+import java.util.function.Predicate;
 
 public class AsynchBFSThread extends Thread {
     static public final boolean DEBUG = false;
@@ -16,10 +17,8 @@ public class AsynchBFSThread extends Thread {
 	private int round;
 	private int requestedTerminationCount;
 	private int terminatedCount;
-    private Map<Link, Message> testResponses;
     private Map<Link, Queue<Message>> outboundMessages;
     private List<Predicate<AsynchBFSThread>> pendingFunctions;
-    private boolean terminate;
 
 	public AsynchBFSThread(String id, Phaser phaser) {
 		this.phaser = phaser;
@@ -27,11 +26,7 @@ public class AsynchBFSThread extends Thread {
 		round = 1;
 		requestedTerminationCount = 0;
 		terminatedCount = 0;
-		this.level = 0;
         outboundMessages = new HashMap<>();
-        testResponses = new HashMap<>();
-        terminate = false;
-
 	}
 
     /*
@@ -70,9 +65,6 @@ public class AsynchBFSThread extends Thread {
 						switch (msg.type) {
 						case RoundTermination:
 							roundTerminatedCount++;
-							break;
-						case AlgoTerminationRequest:
-							processAlgoTerminationRequest(link, msg);
 							break;
 						case AlgoTermination:
 							terminatedCount++;
