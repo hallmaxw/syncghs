@@ -16,12 +16,14 @@ public class Node {
     public Node parent;
     public Map<Node, List<Message>> inboundMessages;
     public List<Node> neighbors;
+    int distance;
 
     public Node(String ID, String componentId) {
         this.ID = ID;
         parent = null;
         inboundMessages = new HashMap<>();
         neighbors = new ArrayList<>();
+        distance = Integer.MAX_VALUE;
     }
 
     public String toString() {
