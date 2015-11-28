@@ -1,8 +1,10 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * Synch GHS Algorithm
+ * Asynch BFS Algorithm
  * Group Members:
  * Maxwell Hall
  * Prashant Prakash
@@ -11,27 +13,35 @@ import java.util.List;
 
 public class Node {
     public String ID;
-    public Link parent;
-    public List<Link> children;
-    public List<Link> allLinks; // list of all links
+    public Node parent;
+    public Map<Node, List<Message>> inboundMessages;
+    public List<Node> neighbors;
 
     public Node(String ID, String componentId) {
         this.ID = ID;
         parent = null;
-        children = new ArrayList<>();
-        allLinks = new ArrayList<>();
-    }
-
-    public void addLink(Link link) {
-        potentialLinks.add(link);
-        allLinks.add(link);
+        inboundMessages = new HashMap<>();
+        neighbors = new ArrayList<>();
     }
 
     public String toString() {
-        if(parent == null) {
-            return String.format("(ID %s) I'm leader", ID);
-        } else {
-            return String.format("(ID %s) Parent: %s", ID, parent.destinationId);
-        }
+        return String.format("(ID %s) Parent: %s", ID, parent.ID);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Node node = (Node) o;
+
+        if (!ID.equals(node.ID)) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        return ID.hashCode();
     }
 }
