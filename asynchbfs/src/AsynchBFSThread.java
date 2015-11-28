@@ -19,49 +19,53 @@ public class AsynchBFSThread extends Thread {
 	private int terminatedCount;
     private Map<Link, Queue<Message>> outboundMessages;
     private List<Predicate<AsynchBFSThread>> pendingFunctions;
+    private Courier courier;
 
 	public AsynchBFSThread(String id, Phaser phaser) {
 		this.phaser = phaser;
-        node = new Node(id, id);
+        node = new Node(id);
 		round = 1;
 		requestedTerminationCount = 0;
 		terminatedCount = 0;
         outboundMessages = new HashMap<>();
+        courier = new Courier();
 	}
 
     /*
         Broadcast a message to all adjacent nodes
      */
-	public void broadcastMessage(Message msg) {
-		for (Link link : node.allLinks) {
-			link.sendMessage(msg);
-		}
-	}
-
-    /*
-        Broadcast a message to children only
-     */
-    private void broadcastToChildren(Message msg) {
-        for (Link link : node.children) {
-            link.sendMessage(msg);
+    public void broadcastMessage(Message msg) {
+        for (Node neighbor : node.neighbors) {
+            neighbor.inboundMessages.get(node).add(msg);
         }
     }
 
     /*
-        processMessages is always executed before the end of every round.
-        If some data needs to be stored from processed messages, it should be
-        contained in an instance variable.
+        Send a distance update to all neighbors except for the parent
+     */
+	public void broadcastDistance() {
 
-        Messages can be stored in outBoundMessages to be sent at the beginning
-        of the next round.
+	}
+
+    /*
+        Create and add an ack lambda function for the current distance and parent
+     */
+    public void createAckLambda() {
+
+    }
+
+
+    /*
+        processMessages is always executed before the end of every round.
      */
 	public void processMessages() {
 		int roundTerminatedCount = 0;
-		while (roundTerminatedCount < node.allLinks.size() - terminatedCount) {
-			for (Link link : node.allLinks) {
-				synchronized (link.inboundMessages) {
-					while (!link.inboundMessages.isEmpty()) {
-						Message msg = link.inboundMessages.remove(0);
+		while (roundTerminatedCount < node.neighbors.size() - terminatedCount) {
+			for (Node neighbor : node.neighbors) {
+                List<Message> msgs = node.inboundMessages.get(neighbor);
+				synchronized (msgs) {
+					while (!msgs.isEmpty()) {
+						Message msg = msgs.remove(0);
 						switch (msg.type) {
 						case RoundTermination:
 							roundTerminatedCount++;
@@ -87,26 +91,12 @@ public class AsynchBFSThread extends Thread {
 	}
 
 	public void run() {
-        broadcastMessage(new Message(Message.MessageType.AlgoTerminationRequest));
-        while(requestedTerminationCount != node.allLinks.size()) {
+        while(node.parent == null || pendingFunctions.size() > 0) {
             waitForRound();
         }
-        printAdjacencyList();
         end();
     }
 
-    private void printAdjacencyList() {
-        StringBuilder builder = new StringBuilder();
-        builder.append(String.format("%s adjacent to ", node.ID));
-        node.children.forEach(child -> {
-            builder.append(child.destinationId);
-            builder.append(" ");
-        });
-        if(node.parent != null) {
-            builder.append(node.parent.destinationId);
-        }
-        System.out.println(builder.toString());
-    }
 
 	public void waitForRound() {
 		try {
@@ -126,17 +116,10 @@ public class AsynchBFSThread extends Thread {
 		}
 	}
 
-	public void addLink(Link link) {
-        outboundMessages.put(link, new LinkedList<>());
-		node.addLink(link);
-	}
 
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append(String.format("THREAD %s\n", node.ID));
-		for (Link link : node.allLinks) {
-			builder.append(String.format("%s\n", link));
-		}
 		return builder.toString();
 	}
 }

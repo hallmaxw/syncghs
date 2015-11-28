@@ -1,7 +1,4 @@
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Asynch BFS Algorithm
@@ -18,10 +15,10 @@ public class Node {
     public List<Node> neighbors;
     int distance;
 
-    public Node(String ID, String componentId) {
+    public Node(String ID) {
         this.ID = ID;
         parent = null;
-        inboundMessages = new HashMap<>();
+        inboundMessages = Collections.synchronizedMap(new HashMap<>());
         neighbors = new ArrayList<>();
         distance = Integer.MAX_VALUE;
     }
