@@ -9,7 +9,7 @@
 public class Message {
     MessageType type;
     Object data;
-    int level;
+    int round;
     
     public Message(MessageType type) {
         this.type = type;
@@ -24,6 +24,7 @@ public class Message {
     enum MessageType {
         RoundTermination,
         AlgoTerminationRequest,
-        AlgoTermination
+        AlgoTermination,
+        DistanceUpdate
     }
 }

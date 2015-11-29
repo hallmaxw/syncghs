@@ -72,12 +72,31 @@ public class AsynchBFSThread extends Thread {
 							break;
 						case AlgoTermination:
 							terminatedCount++;
+                            break;
+                        case DistanceUpdate:
+                            processDistanceUpdate(msg, neighbor);
 						}
 					}
 				}
 			}
 		}
 	}
+
+    /*
+        processDistanceUpdate adds a predicate that will update the parent and distance if
+        the given distance is better than the current distance
+     */
+    public void processDistanceUpdate(Message msg, Node src) {
+        Integer distance = (Integer) msg.data;
+        Predicate<AsynchBFSThread> distUpdate = (AsynchBFSThread t) -> {
+            if(distance.intValue() + 1 < node.distance) {
+                node.distance = distance.intValue() + 1;
+                node.parent = src;
+            }
+            return true;
+        };
+        pendingFunctions.add(distUpdate);
+    }
 
 	public void end() {
         broadcastMessage(new Message(Message.MessageType.AlgoTermination));
