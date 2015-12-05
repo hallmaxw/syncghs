@@ -21,18 +21,25 @@ public class Courier {
         Add a message to the message queue of the given node
      */
     public void addMessage(Message msg, Node destination) {
-    	// if destination Node is already there 
-    	// ## equals and hascode method needs to overidden in Node class 
-    	if(messageQueue.containsKey(destination)) {
-    		Queue<Message> tempQueue = messageQueue.get(destination);
-    		tempQueue.add(msg);
-    		messageQueue.put(destination, tempQueue); 		
-    		
-    	}else {
-    		Queue<Message> tempQueue = new LinkedList<Message>();
-    		tempQueue.add(msg);
-    		messageQueue.put(destination, tempQueue);
-    	}
+        // add a random delay to the message
+        int delay = (int) (Math.random()*15+1);
+        msg.round += delay;
+        Queue<Message> msgQueue = getMessageQueue(destination);
+        msgQueue.add(msg);
+    }
+
+    /*
+        Get the node's message queue. If it's not in the map, insert a new one.
+     */
+    private Queue<Message> getMessageQueue(Node node) {
+        if(messageQueue.containsKey(node)) {
+            return messageQueue.get(node);
+        } else {
+            Queue<Message> queue = new LinkedList<>();
+            messageQueue.put(node, queue);
+            return queue;
+        }
+
     }
 
     /*
