@@ -1,8 +1,5 @@
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Phaser;
 
 /**
@@ -13,6 +10,7 @@ import java.util.concurrent.Phaser;
  * Shashank Adidamu
  */
 public class Main {
+
 
     public static void main(String[] args) {
     	String inputPath = args[0];
@@ -36,7 +34,51 @@ public class Main {
                 e.printStackTrace();
             }
         });
+       // printAdjacencyLists(nodes);
+        System.out.format("The root is process %d\n", dataSource.root);
+        System.out.format("Process Parent Distance\n");
+        for(Node node: nodes) {
+            int process = Integer.parseInt(node.ID);
+            int parent = Integer.parseInt(node.parent.ID);
+            if(process == parent) {
+                parent = -1;
+            }
+            int distance = node.distance;
+            System.out.format("%-8d%-7d%-8d\n", process, parent, distance);
+        }
         if(AsynchBFSThread.DEBUG)
             System.out.println("All threads finished properly");
     }
+
+    private static void printAdjacencyLists(List<Node> nodes) {
+        Map<Node, Set<Node>> map = new HashMap<>();
+        for(Node node: nodes) {
+            Set<Node> thisList = getAdjacencyList(map, node);
+            Set<Node> parentList = getAdjacencyList(map, node.parent);
+            thisList.add(node.parent);
+            parentList.add(node);
+        }
+        for(Map.Entry<Node, Set<Node>> nodeEntry: map.entrySet()) {
+            Node node = nodeEntry.getKey();
+            Set<Node> adjacentNodes = nodeEntry.getValue();
+            StringBuilder builder = new StringBuilder();
+            builder.append(String.format("NODE %s adjacency list: ", node.ID));
+            for(Node adjacentNode: adjacentNodes) {
+                builder.append(String.format("%s ", adjacentNode.ID));
+            }
+            System.out.println(builder.toString());
+        }
+    }
+
+    private static Set<Node> getAdjacencyList(Map<Node, Set<Node>> map, Node node) {
+        if(map.containsKey(node)) {
+            return map.get(node);
+        } else {
+            Set<Node> adjacencyList = new HashSet<>();
+            map.put(node, adjacencyList);
+            return adjacencyList;
+        }
+    }
+
+
 }

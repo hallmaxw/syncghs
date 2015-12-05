@@ -17,7 +17,7 @@ import java.util.Scanner;
 public class DataSource {
 
 	private int numThreads;
-	private int root;
+	public int root;
     private Map<Integer, Node> nodes;
 
     public DataSource() {

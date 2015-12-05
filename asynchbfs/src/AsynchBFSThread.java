@@ -19,7 +19,7 @@ public class AsynchBFSThread extends Thread {
 	private int terminatedCount;
     private List<Predicate<AsynchBFSThread>> pendingFunctions;
     private Courier courier;
-    private int acksReceived;
+    private Map<Node, Boolean> acksReceived;
 
 	public AsynchBFSThread(Node node, Phaser phaser) {
 		this.phaser = phaser;
@@ -29,7 +29,7 @@ public class AsynchBFSThread extends Thread {
 		terminatedCount = 0;
         pendingFunctions = new LinkedList<>();
         courier = new Courier();
-        acksReceived = 0;
+        acksReceived = new HashMap<>();
 
         // If the node has a parent, this is the root. We need to do the following:
         // 1) Create a lambda to broadcast the first dist update.
@@ -65,6 +65,9 @@ public class AsynchBFSThread extends Thread {
 
     public void createBroadcastDistanceLambda() {
         Predicate<AsynchBFSThread> broadcast = (AsynchBFSThread t) -> {
+            if(round > 200) {
+                print("Running broadcast lambda");
+            }
             broadcastDistance();
             return true;
         };
@@ -75,24 +78,33 @@ public class AsynchBFSThread extends Thread {
         Create and add an ack lambda function for the current distance and parent
      */
     public void createAckLambda() {
-        acksReceived = 0;
+        acksReceived.clear();
         final int distance = node.distance;
         Predicate<AsynchBFSThread> lambda = (AsynchBFSThread t) -> {
+
             // the distance was updated
             if(distance != node.distance){
                 return true;
             }
 
 
-            int expectedAcks = node.parent == node ? node.neighbors.size() : node.neighbors.size()-1;
+            int expectedAcks = node.neighbors.size()-1;
+            if(node.parent == node) {
+                expectedAcks += 1;
+            }
+
+            if(round > 200) {
+                print(String.format("ACK LAMBDA: HAVE %d NEED %d\n", acksReceived, expectedAcks));
+            }
             // every neighbor except the parent has sent an ack
-            if(acksReceived == expectedAcks) {
+            if(acksReceived.size() == expectedAcks) {
                 Message msg = new Message(node, Message.MessageType.Ack, Integer.valueOf(node.distance-1));
                 courier.addMessage(msg, node.parent);
                 return true;
             } else {
                 return false;
             }
+
         };
         pendingFunctions.add(lambda);
     }
@@ -115,14 +127,17 @@ public class AsynchBFSThread extends Thread {
 					break;
 				case AlgoTermination:
 					terminatedCount++;
+                    // remove from neighbors
+                    acksReceived.put(message.source, true);
                     break;
                 case DistanceUpdate:
-                    print("DistanceUpdate msg");
+                    print(String.format("DistanceUpdate msg from %s", message.source.ID));
                 	processDistanceUpdate(message, message.source);
                     break;
                 case Ack:
                     print("Ack msg");
-                    processAck(message);
+                    processAck(message, message.source);
+                    break;
 				default:
                     System.err.println("Message handler not implemented");
                     System.err.printf("Message Type: %s", message.type.name());
@@ -143,22 +158,26 @@ public class AsynchBFSThread extends Thread {
     public void processDistanceUpdate(Message msg, Node src) {
         Integer distance = (Integer) msg.data;
         Predicate<AsynchBFSThread> distUpdate = (AsynchBFSThread t) -> {
+            if(round > 200) {
+                print("Running dist update");
+            }
             if(distance.intValue() + 1 < node.distance) {
                 node.distance = distance.intValue() + 1;
                 node.parent = src;
             } else {
                 Message ackMsg = new Message(node, Message.MessageType.Ack, distance);
-                courier.addMessage(msg, src);
+                courier.addMessage(ackMsg, src);
             }
             return true;
         };
         pendingFunctions.add(distUpdate);
     }
 
-    public void processAck(Message msg) {
+    public void processAck(Message msg, Node src) {
         Integer distance = (Integer) msg.data;
         if(distance.intValue() == node.distance) {
-            acksReceived += 1;
+            acksReceived.put(src, true);
+            print(String.format("Received ACK from %s", src.ID));
         }
     }
 
@@ -216,6 +235,8 @@ public class AsynchBFSThread extends Thread {
             processMessages();
             if(node.ID.equals("7"))
                 print(String.format("Round %d ended", round));
+            if(round > 200)
+                print("Checking in");
 			phaser.arriveAndAwaitAdvance();
 			round++;
             // send messages from last message process
