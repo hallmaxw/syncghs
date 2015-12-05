@@ -34,7 +34,6 @@ public class Main {
                 e.printStackTrace();
             }
         });
-       // printAdjacencyLists(nodes);
         System.out.format("The root is process %d\n", dataSource.root);
         System.out.format("Process Parent Distance\n");
         for(Node node: nodes) {
@@ -46,6 +45,9 @@ public class Main {
             int distance = node.distance;
             System.out.format("%-8d%-7d%-8d\n", process, parent, distance);
         }
+
+        System.out.println("\nAdjacency List:");
+        printAdjacencyLists(nodes);
         if(AsynchBFSThread.DEBUG)
             System.out.println("All threads finished properly");
     }
@@ -55,9 +57,13 @@ public class Main {
         for(Node node: nodes) {
             Set<Node> thisList = getAdjacencyList(map, node);
             Set<Node> parentList = getAdjacencyList(map, node.parent);
+            if(thisList == parentList) {
+                continue;
+            }
             thisList.add(node.parent);
             parentList.add(node);
         }
+
         for(Map.Entry<Node, Set<Node>> nodeEntry: map.entrySet()) {
             Node node = nodeEntry.getKey();
             Set<Node> adjacentNodes = nodeEntry.getValue();
