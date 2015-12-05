@@ -21,9 +21,9 @@ public class AsynchBFSThread extends Thread {
     private List<Predicate<AsynchBFSThread>> pendingFunctions;
     private Courier courier;
 
-	public AsynchBFSThread(Node node, Phaser phaser) {
+	public AsynchBFSThread(String id, Phaser phaser) {
 		this.phaser = phaser;
-        this.node = node;
+        node = new Node(id);
 		round = 1;
 		requestedTerminationCount = 0;
 		terminatedCount = 0;
@@ -59,28 +59,29 @@ public class AsynchBFSThread extends Thread {
         processMessages is always executed before the end of every round.
      */
 	public void processMessages() {
-        // need to update this to not use the inboundMessage map
-//		int roundTerminatedCount = 0;
-//		while (roundTerminatedCount < node.neighbors.size() - terminatedCount) {
-//			for (Node neighbor : node.neighbors) {
-//                List<Message> msgs = node.inboundMessages.get(neighbor);
-//				synchronized (msgs) {
-//					while (!msgs.isEmpty()) {
-//						Message msg = msgs.remove(0);
-//						switch (msg.type) {
-//						case RoundTermination:
-//							roundTerminatedCount++;
-//							break;
-//						case AlgoTermination:
-//							terminatedCount++;
-//                            break;
-//                        case DistanceUpdate:
-//                            processDistanceUpdate(msg, neighbor);
-//						}
-//					}
-//				}
-//			}
-//		}
+		
+		int roundTerminatedCount = 0;
+		
+		while(roundTerminatedCount < node.neighbors.size() - terminatedCount) {
+			if(!node.inboundMessages.isEmpty()) {
+				Message message =  node.inboundMessages.remove(0);
+				switch(message.type) {
+				case RoundTermination:
+				roundTerminatedCount++;
+					break;
+				case AlgoTermination:
+					terminatedCount++;
+                    break;
+                case DistanceUpdate:
+                	processDistanceUpdate(message, message.source);
+				default:
+					break;
+				}
+			}
+			
+		}
+		
+		
 	}
 
     /*
