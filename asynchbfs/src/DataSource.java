@@ -1,5 +1,7 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -15,53 +17,67 @@ import java.util.Scanner;
 public class DataSource {
 
 	private int numThreads;
-	private String[] threadIds;
+	private int root;
+    private Map<Integer, Node> nodes;
 
-	public void readThreadIds(String inputpath) {
+    public DataSource() {
+        nodes = new HashMap<>();
+    }
+
+	public void readMetaData(String inputpath) {
 		try {
 			FileReader input = new FileReader(inputpath);
 			BufferedReader br = new BufferedReader(input);
             Scanner inputScanner = new Scanner(br);
-            numThreads = inputScanner.nextInt();
-            inputScanner.nextLine();
-            threadIds = new String[numThreads];
+            String line = inputScanner.nextLine();
 
-            for(int i = 0; i < threadIds.length; i++) {
-                threadIds[i] = inputScanner.next();
-            }
-            inputScanner.nextLine();
+            Scanner metaScanner = new Scanner(line);
+            metaScanner.useDelimiter(", ");
+            numThreads = metaScanner.nextInt();
+            root = metaScanner.nextInt();
 
+            buildNodesMap();
+            Node rootNode = nodes.get(root);
+            rootNode.parent = rootNode;
+
+            inputScanner.close();
+            br.close();
+            input.close();
 		} catch (Exception ex) {
+            ex.printStackTrace();
 			System.err.println("Error in reading input File");
 		}
 	}
 
-	public void readWeights(String inputpath, Map<String, AsynchBFSThread> threads) {
+    private void buildNodesMap() {
+        for(int nodeId = 1; nodeId <= numThreads; nodeId++) {
+            nodes.put(nodeId, new Node(String.valueOf(nodeId)));
+        }
+    }
+
+	public void processConnectivity(String inputpath) {
 		try {
 			FileReader input = new FileReader(inputpath);
 			BufferedReader br = new BufferedReader(input);
             Scanner inputScanner = new Scanner(br);
-            // move the scanner to the weights
+            // move the scanner to the connectivity section
 			inputScanner.nextLine();
-            inputScanner.nextLine();
-			for(int sourceIndex = 0; sourceIndex < threads.size(); sourceIndex++) {
+			for(int sourceId = 1; sourceId <= numThreads; sourceId++) {
 
-                for (int destinationIndex = 0; destinationIndex < getNumThreads(); destinationIndex++) {
-                    double weight = inputScanner.nextDouble();
+                for (int destinationId = 1; destinationId <= numThreads; destinationId++) {
+                    int connectivity = inputScanner.nextInt();
                     // only process the right side of the matrix
-                    if(destinationIndex < sourceIndex)
+                    if(destinationId <= sourceId)
                         continue;
-                    if(destinationIndex == sourceIndex)
-                        continue;
-                    if (weight != -1) {
-                        Link link = new Link(threadIds[destinationIndex],threadIds[sourceIndex], weight);
-                        threads.get(threadIds[sourceIndex]).addLink(link);
-                        threads.get(threadIds[destinationIndex])
-                                .addLink(Link.GetReverseLink(link));
-
+                    if (connectivity == 1) {
+                        // add this node as a connection
+                        Node srcNode = nodes.get(sourceId);
+                        Node destNode = nodes.get(destinationId);
+                        srcNode.neighbors.add(destNode);
+                        destNode.neighbors.add(srcNode);
                     }
                 }
-                if(sourceIndex != threads.size()-1)
+                if(sourceId < numThreads)
 				    inputScanner.nextLine();
 			}
 
@@ -75,16 +91,9 @@ public class DataSource {
 		return numThreads;
 	}
 
-	public void setNumThreads(int numThreads) {
-		this.numThreads = numThreads;
+	public Collection<Node> getNodes() {
+		return nodes.values();
 	}
 
-	public String[] getThreadIds() {
-		return threadIds;
-	}
-
-	public void setThreadIdMap(String[] threadIds) {
-		this.threadIds = threadIds;
-	}
 
 }

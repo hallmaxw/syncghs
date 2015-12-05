@@ -1,5 +1,7 @@
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Phaser;
 
@@ -14,20 +16,17 @@ public class Main {
 
     public static void main(String[] args) {
     	String inputPath = args[0];
-    	DataSource dsSource = new DataSource();
-    	dsSource.readThreadIds(inputPath);
+    	DataSource dataSource = new DataSource();
+        dataSource.readMetaData(inputPath);
+        dataSource.processConnectivity(inputPath);
+        List<Node> nodes =  new ArrayList<>(dataSource.getNodes());
         // phaser is used to manage rounds
-    	Phaser phaser = new Phaser(dsSource.getNumThreads());
-        Map<String,AsynchBFSThread> threads = new HashMap<>();
-        
-        for(int i = 0; i < dsSource.getNumThreads(); i++) {
-            threads.put(dsSource.getThreadIds()[i],new AsynchBFSThread(dsSource.getThreadIds()[i], phaser));
+    	Phaser phaser = new Phaser(dataSource.getNumThreads());
+        Map<String, AsynchBFSThread> threads = new HashMap<>();
+
+        for(Node node: nodes) {
+            threads.put(node.ID, new AsynchBFSThread(node, phaser));
         }
-        
-        // building links with weights 
-        dsSource.readWeights(inputPath, threads);
-
-
 
         threads.values().forEach(Thread::start);
         threads.values().forEach((Thread t) -> {

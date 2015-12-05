@@ -24,7 +24,19 @@ public class Node {
     }
 
     public String toString() {
-        return String.format("(ID %s) Parent: %s", ID, parent.ID);
+        StringBuilder builder = new StringBuilder();
+        if(parent != null) {
+            builder.append(String.format("(ID %s) Parent: %s\n", ID, parent.ID));
+        } else {
+            builder.append(String.format("(ID %s) No Parent\n", ID));
+        }
+
+        builder.append("NEIGHBORS:\n");
+        for(Node neighbor: neighbors) {
+            builder.append(String.format("ID %s\n", neighbor.ID));
+        }
+
+        return builder.toString();
     }
 
     @Override

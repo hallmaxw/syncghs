@@ -21,9 +21,9 @@ public class AsynchBFSThread extends Thread {
     private List<Predicate<AsynchBFSThread>> pendingFunctions;
     private Courier courier;
 
-	public AsynchBFSThread(String id, Phaser phaser) {
+	public AsynchBFSThread(Node node, Phaser phaser) {
 		this.phaser = phaser;
-        node = new Node(id);
+        this.node = node;
 		round = 1;
 		requestedTerminationCount = 0;
 		terminatedCount = 0;
