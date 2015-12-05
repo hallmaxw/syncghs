@@ -24,10 +24,15 @@ public class Message {
         this.data = data;
     }
 
+    public String toString() {
+        return String.format("SOURCE: %s TYPE: %s ROUND: %d\n", source.ID, type.name(), round);
+    }
+
     enum MessageType {
         RoundTermination,
         AlgoTerminationRequest,
         AlgoTermination,
-        DistanceUpdate
+        DistanceUpdate,
+        Ack
     }
 }
