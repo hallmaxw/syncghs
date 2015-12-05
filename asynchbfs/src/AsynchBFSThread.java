@@ -36,7 +36,7 @@ public class AsynchBFSThread extends Thread {
      */
     public void broadcastMessage(Message msg) {
         for (Node neighbor : node.neighbors) {
-            neighbor.inboundMessages.get(node).add(msg);
+            neighbor.inboundMessages.add(msg);
         }
     }
 
@@ -59,27 +59,28 @@ public class AsynchBFSThread extends Thread {
         processMessages is always executed before the end of every round.
      */
 	public void processMessages() {
-		int roundTerminatedCount = 0;
-		while (roundTerminatedCount < node.neighbors.size() - terminatedCount) {
-			for (Node neighbor : node.neighbors) {
-                List<Message> msgs = node.inboundMessages.get(neighbor);
-				synchronized (msgs) {
-					while (!msgs.isEmpty()) {
-						Message msg = msgs.remove(0);
-						switch (msg.type) {
-						case RoundTermination:
-							roundTerminatedCount++;
-							break;
-						case AlgoTermination:
-							terminatedCount++;
-                            break;
-                        case DistanceUpdate:
-                            processDistanceUpdate(msg, neighbor);
-						}
-					}
-				}
-			}
-		}
+        // need to update this to not use the inboundMessage map
+//		int roundTerminatedCount = 0;
+//		while (roundTerminatedCount < node.neighbors.size() - terminatedCount) {
+//			for (Node neighbor : node.neighbors) {
+//                List<Message> msgs = node.inboundMessages.get(neighbor);
+//				synchronized (msgs) {
+//					while (!msgs.isEmpty()) {
+//						Message msg = msgs.remove(0);
+//						switch (msg.type) {
+//						case RoundTermination:
+//							roundTerminatedCount++;
+//							break;
+//						case AlgoTermination:
+//							terminatedCount++;
+//                            break;
+//                        case DistanceUpdate:
+//                            processDistanceUpdate(msg, neighbor);
+//						}
+//					}
+//				}
+//			}
+//		}
 	}
 
     /*
@@ -99,7 +100,7 @@ public class AsynchBFSThread extends Thread {
     }
 
 	public void end() {
-        broadcastMessage(new Message(Message.MessageType.AlgoTermination));
+        broadcastMessage(new Message(node, Message.MessageType.AlgoTermination));
         if(DEBUG)
             print(String.format("%s\n", node));
 		phaser.arriveAndDeregister();
@@ -119,7 +120,7 @@ public class AsynchBFSThread extends Thread {
 
 	public void waitForRound() {
 		try {
-            broadcastMessage(new Message(Message.MessageType.RoundTermination));
+            broadcastMessage(new Message(node, Message.MessageType.RoundTermination));
             processMessages();
 			phaser.arriveAndAwaitAdvance();
 			round++;

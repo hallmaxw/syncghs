@@ -11,14 +11,14 @@ import java.util.*;
 public class Node {
     public String ID;
     public Node parent;
-    public Map<Node, List<Message>> inboundMessages;
+    public List<Message> inboundMessages;
     public List<Node> neighbors;
     int distance;
 
     public Node(String ID) {
         this.ID = ID;
         parent = null;
-        inboundMessages = Collections.synchronizedMap(new HashMap<>());
+        inboundMessages = Collections.synchronizedList(new ArrayList<>());
         neighbors = new ArrayList<>();
         distance = Integer.MAX_VALUE;
     }

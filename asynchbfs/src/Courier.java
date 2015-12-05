@@ -51,10 +51,7 @@ public class Courier {
 			Message pollMessage = messageQueue.get(node).poll();
     		while(pollMessage != null && pollMessage.round <= round) { // round condition keep polling messages for round less than input round 
     			pollMessage = messageQueue.get(node).poll();
-    			// ## todo - why inbound message has key as Node ? it can be only node id also right? 
-    			List<Message> message = node.inboundMessages.get(node); 
-    			message.add(pollMessage);
-    			node.inboundMessages.put(node, message);
+    			node.inboundMessages.add(pollMessage);
     		}
 		}
     }
