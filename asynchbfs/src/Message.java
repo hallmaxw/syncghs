@@ -1,5 +1,5 @@
 /**
- * Synch GHS Algorithm
+ * Asynch BFS Algorithm
  * Group Members:
  * Maxwell Hall
  * Prashant Prakash
@@ -30,7 +30,6 @@ public class Message {
 
     enum MessageType {
         RoundTermination,
-        AlgoTerminationRequest,
         AlgoTermination,
         DistanceUpdate,
         Ack

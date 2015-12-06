@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Scanner;
 
 /**
- * Synch GHS Algorithm
+ * Asynch BFS Algorithm
  * Group Members:
  * Maxwell Hall
  * Prashant Prakash
