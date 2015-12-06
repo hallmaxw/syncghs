@@ -30,7 +30,8 @@ Sample Commands:
 
 java Main /home/004/p/px/pxp141730/connectivity.txt
 
-NOTE: The output will also include messages marking the completion of each round.
+NOTE: 1) The output will also include messages marking the completion of each round.
+      2) Venky's sample connectivity file is included in our zip file as connectivity.txt
 
 Sample Input: 
 
