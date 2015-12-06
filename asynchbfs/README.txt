@@ -14,9 +14,9 @@ Note : For running this Program "JAVA8" must be installed in the system.
 
 Steps to Run the program 
 1. unzip the folder containing code 
-	unizip asynchffs.zip
+	unizip asynchbfs.zip
 2. Change to directory asynchbfs
-cd asynchghs 
+cd asynchbfs 
 3. Compile all java Files 
 javac *.java
 // running Main.java
