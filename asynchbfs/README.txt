@@ -30,6 +30,8 @@ Sample Commands:
 
 java Main /home/004/p/px/pxp141730/connectivity.txt
 
+NOTE: The output will also include messages marking the completion of each round.
+
 Sample Input: 
 
 12, 7
