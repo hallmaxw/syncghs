@@ -1,6 +1,5 @@
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 
@@ -14,7 +13,7 @@ import java.util.Queue;
  * Courier handles sending messages between nodes
  */
 public class Courier {
-	// Map declaration to handle message Queue for every Node
+	// Map to handle message Queue for every Node
     private Map<Node,Queue<Message>> messageQueue = new HashMap<Node, Queue<Message>>();
 	
 	/*
@@ -26,7 +25,6 @@ public class Courier {
         msg.round += delay;
         Queue<Message> msgQueue = getMessageQueue(destination);
         msgQueue.add(msg);
-        System.out.println("Courier added message");
     }
 
     /*
@@ -47,13 +45,6 @@ public class Courier {
         Send messages for the given round
      */
     public void sendMessages(int round) {
-//        System.out.println("SENDING FOR ROUND" + String.valueOf(round));
-//        for(Queue<Message> msgs: messageQueue.values()) {
-//            for(Message msg: msgs) {
-//                System.out.print(msg);
-//            }
-//        }
-//        System.out.println(messageQueue.values());
     	// keep polling message from the message Queue and put that into the destination Node inbound list
     	for (Node node : messageQueue.keySet()) {
             Queue<Message> messages = messageQueue.get(node);
@@ -61,7 +52,6 @@ public class Courier {
     		while(pollMessage != null && pollMessage.round <= round) { // round condition keep polling messages for round less than input round
     			pollMessage = messages.poll();
                 node.inboundMessages.add(pollMessage);
-                System.out.println("Courier sending message");
                 pollMessage = messages.peek();
     		}
 		}

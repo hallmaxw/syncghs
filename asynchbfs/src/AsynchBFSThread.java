@@ -1,5 +1,5 @@
 /**
- * Synch GHS Algorithm
+ * Asynch BFS Algorithm
  * Group Members:
  * Maxwell Hall
  * Prashant Prakash
@@ -15,7 +15,6 @@ public class AsynchBFSThread extends Thread {
 	private Phaser phaser;
     private Node node;
 	private int round;
-	private int requestedTerminationCount;
 	private int terminatedCount;
     private List<Predicate<AsynchBFSThread>> pendingFunctions;
     private Courier courier;
@@ -25,7 +24,6 @@ public class AsynchBFSThread extends Thread {
 		this.phaser = phaser;
         this.node = node;
 		round = 1;
-		requestedTerminationCount = 0;
 		terminatedCount = 0;
         pendingFunctions = new LinkedList<>();
         courier = new Courier();
@@ -65,6 +63,7 @@ public class AsynchBFSThread extends Thread {
 
     public void createBroadcastDistanceLambda() {
         Predicate<AsynchBFSThread> broadcast = (AsynchBFSThread t) -> {
+
             if(round > 200) {
                 print("Running broadcast lambda");
             }
@@ -183,13 +182,13 @@ public class AsynchBFSThread extends Thread {
 
 	public void end() {
         broadcastMessage(new Message(node, Message.MessageType.AlgoTermination));
-        if(DEBUG)
-            print(String.format("%s\n", node));
+        print(String.format("%s\n", node));
 		phaser.arriveAndDeregister();
 	}
 
 	public void print(String msg) {
-		System.out.format("ID %s (round %d): %s\n", node.ID, round, msg);
+        if(DEBUG)
+		    System.out.format("ID %s (round %d): %s\n", node.ID, round, msg);
 	}
 
 	public void run() {
