@@ -16,6 +16,10 @@ public class AsynchBFSThread extends Thread {
     private Node node;
 	private int round;
 	private int terminatedCount;
+    /*
+        pendingFunctions is a list of predicates to be executed at the beginning of each round.
+        If a predicate returns true, it should be removed from the list.
+     */
     private List<Predicate<AsynchBFSThread>> pendingFunctions;
     private Courier courier;
     private Map<Node, Boolean> acksReceived;
@@ -61,6 +65,9 @@ public class AsynchBFSThread extends Thread {
         }
 	}
 
+    /*
+        Create and insert a predicate to broadcast the current distance.
+     */
     public void createBroadcastDistanceLambda() {
         Predicate<AsynchBFSThread> broadcast = (AsynchBFSThread t) -> {
 
@@ -121,12 +128,11 @@ public class AsynchBFSThread extends Thread {
 				Message message =  node.inboundMessages.remove(0);
 				switch(message.type) {
 				case RoundTermination:
-                    //print("RoundTermination msg");
 				    roundTerminatedCount++;
 					break;
 				case AlgoTermination:
 					terminatedCount++;
-                    // remove from neighbors
+                    // update acksReceived so we don't wait on a terminated neighbor
                     acksReceived.put(message.source, true);
                     break;
                 case DistanceUpdate:
@@ -172,6 +178,10 @@ public class AsynchBFSThread extends Thread {
         pendingFunctions.add(distUpdate);
     }
 
+    /*
+        processAck marks the ack as received from the source node if the ack was sent
+        for the current distance.
+     */
     public void processAck(Message msg, Node src) {
         Integer distance = (Integer) msg.data;
         if(distance.intValue() == node.distance) {
@@ -180,6 +190,9 @@ public class AsynchBFSThread extends Thread {
         }
     }
 
+    /*
+        end notifies neighbors that this node is finished and deregisters from the phaser
+     */
 	public void end() {
         broadcastMessage(new Message(node, Message.MessageType.AlgoTermination));
         print(String.format("%s\n", node));
@@ -192,20 +205,18 @@ public class AsynchBFSThread extends Thread {
 	}
 
 	public void run() {
+        // run until there are no more functions to execute and this node has a parent
         while(node.parent == null || pendingFunctions.size() > 0) {
-            Node prevParent = node.parent;
             int prevDistance = node.distance;
 
             courier.sendMessages(round);
             executePendingFunctions();
             boolean updated = false;
-            if(prevParent != node.parent) {
+
+            if(prevDistance != node.distance) {
                 updated = true;
-            } else {
-                if(prevDistance != node.distance) {
-                    updated = true;
-                }
             }
+
             if(updated) {
                 print(String.format("Distance updated to %d", node.distance));
                 createBroadcastDistanceLambda();
@@ -216,7 +227,9 @@ public class AsynchBFSThread extends Thread {
         end();
     }
 
-
+    /*
+        Run the pending predicates. If any return true, remove them from the list.
+     */
     public void executePendingFunctions() {
         Iterator<Predicate<AsynchBFSThread>> iter = pendingFunctions.iterator();
         while(iter.hasNext()) {
@@ -228,6 +241,9 @@ public class AsynchBFSThread extends Thread {
         }
     }
 
+    /*
+        Wait to receive all messages from neighbors then wait for all other nodes to finish the round.
+     */
 	public void waitForRound() {
 		try {
             broadcastMessage(new Message(node, Message.MessageType.RoundTermination));
