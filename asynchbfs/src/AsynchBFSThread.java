@@ -248,8 +248,8 @@ public class AsynchBFSThread extends Thread {
 		try {
             broadcastMessage(new Message(node, Message.MessageType.RoundTermination));
             processMessages();
-            if(node.ID.equals("7"))
-                print(String.format("Round %d ended", round));
+            if(node.parent == node)
+                System.out.format("Completed round %d\n", round);
             if(round > 200)
                 print("Checking in");
 			phaser.arriveAndAwaitAdvance();
