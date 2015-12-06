@@ -1,20 +1,20 @@
-ourse -> Distributed Computing 6380            
-                                                                                               #
+Course -> Distributed Computing 6380
+                                                                                               
 Purpose -> Group Project 2                                      
-                                                                                          #
-No of Java Files ->6                                            
-                                                                                           #
-   Group Members: 1.Maxwell Hall                           
-                      2.Prashant Prakash                       
-                      3. Shahshank Adidamu                     
+                                                                                          
+No of Java Files -> 7                                            
+                                                                                           
+   Group Members: 1. Maxwell Hall                           
+                  2. Prashant Prakash                       
+                  3. Shahshank Adidamu                     
                                                                                                   
 #################################################
 
 Note : For running this Program "JAVA8" must be installed in the system.
 
 Steps to Run the program 
-1. unzip the folder containing code 
-	unizip asynchbfs.zip
+1.  unzip the folder containing code 
+	unzip asynchbfs.zip
 2. Change to directory asynchbfs
 cd asynchbfs 
 3. Compile all java Files 
@@ -22,10 +22,9 @@ javac *.java
 // running Main.java
 4. Run the class having main function (Main)
 
-
 Usage of this class:
 java Main p1 
-p1: Absolute path of file containing information about process and weights 
+p1: Path of file containing information about process and weights 
 
 Sample Commands: 
 
@@ -56,24 +55,24 @@ Process Parent Distance
 3       5      3       
 4       7      1       
 5       8      2       
-6       5      3       
+6       12     3       
 7       -1     0       
 8       7      1       
-9       5      3       
+9       12     3       
 10      7      1       
-11      8      2       
+11      10     2       
 12      10     2       
 
 Adjacency List:
-NODE 11 adjacency list: 8 
-NODE 1 adjacency list: 2 8 
-NODE 12 adjacency list: 10 
-NODE 2 adjacency list: 1 
-NODE 3 adjacency list: 5 
-NODE 4 adjacency list: 7 
-NODE 5 adjacency list: 3 6 8 9 
-NODE 6 adjacency list: 5 
-NODE 7 adjacency list: 4 8 10 
-NODE 8 adjacency list: 11 1 5 7 
-NODE 9 adjacency list: 5 
-NODE 10 adjacency list: 12 7 
+NODE 11  adjacency list: 10 
+NODE 1   adjacency list: 2 8 
+NODE 12  adjacency list: 6 9 10 
+NODE 2   adjacency list: 1 
+NODE 3   adjacency list: 5 
+NODE 4   adjacency list: 7 
+NODE 5   adjacency list: 3 8 
+NODE 6   adjacency list: 12 
+NODE 7   adjacency list: 4 8 10 
+NODE 8   adjacency list: 1 5 7 
+NODE 9   adjacency list: 12 
+NODE 10  adjacency list: 11 12 7 
